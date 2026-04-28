@@ -1,6 +1,6 @@
 # TradeBill Canada
 
-TradeBill Canada is a planned iPhone-first SwiftUI app for Canadian solo service providers who need to create estimates, invoices, and clean PDFs quickly in the field.
+TradeBill Canada is an iPhone-first SwiftUI app for Canadian solo service providers who need to create estimates, invoices, and clean PDFs quickly in the field.
 
 The v1 product is local-only, portrait-only, and intentionally small:
 
@@ -12,13 +12,11 @@ The v1 product is local-only, portrait-only, and intentionally small:
 
 ## Current Stage
 
-This repository is in staged Windows-first planning mode. Use it for product specs, design notes, legal drafts, App Store copy, and PDF reference material before the MacBook/Xcode build begins.
-
-When the MacBook is available, create the SwiftUI iOS project in Xcode and bring these prepared docs and assets into the app project.
+The Windows planning package is complete, and the Mac/Xcode implementation has started. The repository now contains a real SwiftUI iOS project, SwiftData models, core document flows, PDF rendering, StoreKit unlock scaffolding, and XCTest coverage for core business rules.
 
 See [project stages](docs/stages.md) for the current checkpoint and the next approved stage.
 
-## Suggested Future Xcode Structure
+## Xcode Structure
 
 ```text
 TradeBillCanada/
@@ -68,3 +66,35 @@ TradeBillCanada/
 - [Screenshot plan](app-store/screenshot-plan.md)
 - [Privacy policy draft](legal/privacy-policy.md)
 - [Terms and disclaimer draft](legal/terms-disclaimer.md)
+
+## Local Build
+
+```sh
+xcodebuild -project TradeBillCanada.xcodeproj -scheme TradeBillCanada -destination 'platform=iOS Simulator,name=iPhone 16' build
+```
+
+If Xcode reports that the iOS platform is missing, install it first:
+
+```sh
+xcodebuild -downloadPlatform iOS
+```
+
+## Local Testing
+
+Run the app test suite on a booted or available simulator:
+
+```sh
+scripts/run-ios-tests.sh
+```
+
+For a deterministic simulator target, pass the simulator UUID:
+
+```sh
+DEVICE_ID=73466A72-167A-446E-B4B3-7D840709D7B1 scripts/run-ios-tests.sh
+```
+
+If Simulator/Xcode gets stuck during first boot or test launch, capture a diagnostic snapshot:
+
+```sh
+BOOTSTATUS_TIMEOUT_SECONDS=20 scripts/diagnose-ios-simulator.sh
+```

@@ -89,7 +89,7 @@ Completed artifacts:
 
 ## Stage 5: Xcode Project Setup
 
-Status: Prepared; blocked until Mac/Xcode is available.
+Status: Completed.
 
 Goal:
 
@@ -103,23 +103,29 @@ Prepared artifacts:
 - Planned bundle ID documented.
 - Mac-only completion criteria documented.
 
-Blocked artifacts:
+Completed or in-progress artifacts:
 
-- Xcode project.
-- Bundle ID configured inside Xcode.
-- App shell compiled in Xcode.
-- Local iOS simulator build verification.
-- Unit test target verification.
-- Git commit with initial app project.
+- Xcode project created.
+- Bundle ID configured as `com.yourname.tradebillcanada`.
+- SwiftUI app shell created.
+- SwiftData model container and local models created.
+- Initial unit test target created.
+- Source-level Swift typecheck against the iOS simulator SDK passes.
+- Full `xcodebuild` simulator build passes.
+- `build-for-testing` passes.
+- XCTest suite passes on iPhone 16 / iOS 18.4 simulator.
+- Manual simulator install and launch passes.
+- Generated launch screen is enabled, so the app runs full-screen on modern iPhones.
+- Local simulator diagnostic and test helper scripts are available in `scripts/`.
 
 Notes:
 
-- This Windows machine does not have Swift, Xcode, `xcodebuild`, or iOS Simulator.
-- Stage 5 should be marked completed only after the Mac checklist is executed and the app builds locally.
+- This Mac has Xcode available and the iOS 18.4 simulator platform installed.
+- During setup, the first simulator test run stalled because the freshly installed iOS runtime was still building its dyld cache and the simulator device entered a failed migration state. The device was erased after cache generation completed, then boot, launch, and XCTest all succeeded.
 
 ## Stage 6: Local Data and Core CRUD
 
-Status: Not started.
+Status: In progress.
 
 Goal:
 
@@ -127,16 +133,21 @@ Implement business profile, clients, documents, and line items with local persis
 
 Expected artifacts:
 
-- SwiftData or SQLite persistence.
+- SwiftData persistence.
 - Business profile setup.
 - Client CRUD.
 - Document CRUD.
 - Line item editor.
 - Basic search/filter.
 
+Current notes:
+
+- Initial SwiftData models, business setup, client editor/list, document editor/detail, line item editing, status handling, and dashboard search/filter are implemented.
+- More hands-on simulator QA is still needed for complete CRUD flow confidence.
+
 ## Stage 7: Calculations and Tax Logic
 
-Status: Not started.
+Status: In progress.
 
 Goal:
 
@@ -149,9 +160,14 @@ Expected artifacts:
 - Custom/no-tax support.
 - Unit tests for calculations.
 
+Current notes:
+
+- Calculation service, Canadian tax presets, discounts, deposits/paid amounts, and tax unit tests are implemented.
+- XCTest coverage currently verifies Ontario, British Columbia, Quebec, Nova Scotia, discount clamping, estimate conversion, and free-limit entitlement behavior.
+
 ## Stage 8: PDF Preview and Export
 
-Status: Not started.
+Status: In progress.
 
 Goal:
 
@@ -165,9 +181,15 @@ Expected artifacts:
 - Filename generation.
 - PDF QA pass.
 
+Current notes:
+
+- Initial PDF renderer, preview screen, ShareLink flow, export gating, and filename tests are implemented.
+- XCTest coverage confirms the renderer emits valid PDF data.
+- Visual PDF QA and multi-page stress testing are still pending.
+
 ## Stage 9: StoreKit and Paywall
 
-Status: Not started.
+Status: In progress.
 
 Goal:
 
@@ -180,6 +202,11 @@ Expected artifacts:
 - Restore purchase.
 - Free limit gating.
 - StoreKit local test pass.
+
+Current notes:
+
+- StoreKit 2 purchase manager scaffold, lifetime unlock product ID, paywall, restore path, and free limit gate are implemented.
+- StoreKit local configuration and sandbox purchase testing are still pending.
 
 ## Stage 10: Launch Preparation
 
