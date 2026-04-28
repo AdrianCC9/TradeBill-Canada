@@ -17,6 +17,8 @@ private struct LineItemDraft: Identifiable {
 }
 
 struct DocumentEditorView: View {
+    private static let customTaxOptionID = "custom-tax"
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query private var clients: [Client]
@@ -35,6 +37,8 @@ struct DocumentEditorView: View {
     @State private var discountType = DiscountType.none
     @State private var discountValue = ""
     @State private var taxPresetID = CanadianProvince.ON.code
+    @State private var customTaxLabel = "Custom Tax"
+    @State private var customTaxRate = ""
     @State private var amountPaid = ""
     @State private var notes = ""
     @State private var terms = "Payment due within 14 days."
@@ -54,7 +58,10 @@ struct DocumentEditorView: View {
     }
 
     private var selectedTaxPreset: TaxPreset {
-        taxOptions.first { $0.id == taxPresetID } ?? TaxPresetService.noTax
+        if taxPresetID == Self.customTaxOptionID {
+            return TaxPresetService.custom(label: customTaxLabel, ratePercent: customTaxRate.decimalValue)
+        }
+        return taxOptions.first { $0.id == taxPresetID } ?? TaxPresetService.noTax
     }
 
     private var totals: DocumentTotals {
@@ -126,6 +133,12 @@ struct DocumentEditorView: View {
                     ForEach(taxOptions) { preset in
                         Text(preset.displayName).tag(preset.id)
                     }
+                    Text("Custom percentage").tag(Self.customTaxOptionID)
+                }
+                if taxPresetID == Self.customTaxOptionID {
+                    TextField("Tax label", text: $customTaxLabel)
+                        .textInputAutocapitalization(.words)
+                    MoneyTextField(title: "Tax rate %", text: $customTaxRate)
                 }
             }
 
@@ -198,7 +211,18 @@ struct DocumentEditorView: View {
             discountValue = existingDocument.discountType == .percentage
                 ? NSDecimalNumber(value: existingDocument.discountPercentage).stringValue
                 : NSDecimalNumber(decimal: Decimal.dollars(from: existingDocument.discountValueCents)).stringValue
-            taxPresetID = existingDocument.taxProvinceCode ?? TaxPresetService.noTax.id
+            if
+                let provinceCode = existingDocument.taxProvinceCode,
+                taxOptions.contains(where: { $0.id == provinceCode })
+            {
+                taxPresetID = provinceCode
+            } else if existingDocument.taxRatePercent > 0 {
+                taxPresetID = Self.customTaxOptionID
+                customTaxLabel = TaxPresetService.preset(for: existingDocument).components.first?.label ?? "Custom Tax"
+                customTaxRate = NSDecimalNumber(value: existingDocument.taxRatePercent).stringValue
+            } else {
+                taxPresetID = TaxPresetService.noTax.id
+            }
             amountPaid = NSDecimalNumber(decimal: Decimal.dollars(from: existingDocument.amountPaidCents)).stringValue
             notes = existingDocument.notes
             terms = existingDocument.terms

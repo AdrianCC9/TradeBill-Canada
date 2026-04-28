@@ -2,11 +2,45 @@ import Foundation
 import UIKit
 
 enum PDFRenderService {
+    private static let singlePageLineItemLimit = 6
+    private static let firstPageLineItemLimit = 15
+    private static let continuationPageLineItemLimit = 24
+
     static func render(request: PDFRenderRequest) -> Data {
         let renderer = UIGraphicsPDFRenderer(bounds: PDFLayout.pageBounds)
         return renderer.pdfData { context in
+            if request.lineItems.count <= singlePageLineItemLimit {
+                context.beginPage()
+                drawFirstPage(
+                    request: request,
+                    lineItems: request.lineItems,
+                    includeSummary: true,
+                    pageNumber: 1
+                )
+                return
+            }
+
+            let lineItemPages = paginatedLineItems(request.lineItems)
+            for (index, lineItems) in lineItemPages.enumerated() {
+                context.beginPage()
+                if index == 0 {
+                    drawFirstPage(
+                        request: request,
+                        lineItems: lineItems,
+                        includeSummary: false,
+                        pageNumber: index + 1
+                    )
+                } else {
+                    drawContinuationPage(
+                        request: request,
+                        lineItems: lineItems,
+                        pageNumber: index + 1
+                    )
+                }
+            }
+
             context.beginPage()
-            drawPage(request: request)
+            drawSummaryPage(request: request, pageNumber: lineItemPages.count + 1)
         }
     }
 
@@ -17,18 +51,26 @@ enum PDFRenderService {
         return url
     }
 
-    private static func drawPage(request: PDFRenderRequest) {
+    private static func drawFirstPage(
+        request: PDFRenderRequest,
+        lineItems: [CalculationLineItem],
+        includeSummary: Bool,
+        pageNumber: Int
+    ) {
         let bounds = PDFLayout.pageBounds
-        UIColor(red: 0.094, green: 0.749, blue: 0.765, alpha: 1).setFill()
-        UIBezierPath(rect: CGRect(x: 0, y: 0, width: bounds.width, height: PDFLayout.accentHeight)).fill()
+        drawAccentLine(in: bounds)
 
         var y = PDFLayout.margin
-        draw(request.businessName, at: CGPoint(x: PDFLayout.margin, y: y), font: .boldSystemFont(ofSize: 24))
+        let logoRect = CGRect(x: PDFLayout.margin, y: y - 4, width: 54, height: 54)
+        let didDrawLogo = drawImage(from: request.logoURL, in: logoRect)
+        let businessX = didDrawLogo ? PDFLayout.margin + 68 : PDFLayout.margin
+
+        draw(request.businessName, at: CGPoint(x: businessX, y: y), font: .boldSystemFont(ofSize: 24), width: didDrawLogo ? 250 : 300)
         draw(request.documentType.uppercaseName, at: CGPoint(x: 410, y: y), font: .boldSystemFont(ofSize: 24), alignment: .right, width: 160)
         y += 30
 
         request.businessContactLines.prefix(5).forEach { line in
-            draw(line, at: CGPoint(x: PDFLayout.margin, y: y), font: .systemFont(ofSize: 10), color: .darkGray)
+            draw(line, at: CGPoint(x: businessX, y: y), font: .systemFont(ofSize: 10), color: .darkGray, width: didDrawLogo ? 250 : 300)
             y += 14
         }
 
@@ -53,29 +95,83 @@ enum PDFRenderService {
         drawTableHeader(y: y)
         y += PDFLayout.rowHeight
 
-        request.lineItems.prefix(12).forEach { item in
-            draw(item.description, at: CGPoint(x: PDFLayout.margin, y: y + 6), font: .systemFont(ofSize: 10), width: 260)
+        y = drawLineItems(lineItems, startingAt: y)
+
+        if includeSummary {
+            let totalsEndY = drawTotals(request.totals, y: y + 22)
+            drawFooterSections(request: request, y: totalsEndY + 22)
+        } else {
+            drawContinuationNotice(pageNumber: pageNumber)
+        }
+
+        drawPageNumber(pageNumber)
+    }
+
+    private static func drawContinuationPage(
+        request: PDFRenderRequest,
+        lineItems: [CalculationLineItem],
+        pageNumber: Int
+    ) {
+        drawAccentLine(in: PDFLayout.pageBounds)
+        draw(request.businessName, at: CGPoint(x: PDFLayout.margin, y: PDFLayout.margin), font: .boldSystemFont(ofSize: 14))
+        draw("No. \(request.documentNumber)", at: CGPoint(x: 410, y: PDFLayout.margin), font: .systemFont(ofSize: 11), alignment: .right, width: 160)
+        draw("Line items continued", at: CGPoint(x: PDFLayout.margin, y: 82), font: .boldSystemFont(ofSize: 13))
+        drawTableHeader(y: 112)
+        _ = drawLineItems(lineItems, startingAt: 112 + PDFLayout.rowHeight)
+        drawContinuationNotice(pageNumber: pageNumber)
+        drawPageNumber(pageNumber)
+    }
+
+    private static func drawSummaryPage(request: PDFRenderRequest, pageNumber: Int) {
+        drawAccentLine(in: PDFLayout.pageBounds)
+        draw(request.businessName, at: CGPoint(x: PDFLayout.margin, y: PDFLayout.margin), font: .boldSystemFont(ofSize: 14))
+        draw("No. \(request.documentNumber)", at: CGPoint(x: 410, y: PDFLayout.margin), font: .systemFont(ofSize: 11), alignment: .right, width: 160)
+        draw("Summary", at: CGPoint(x: PDFLayout.margin, y: 94), font: .boldSystemFont(ofSize: 18))
+        let totalsEndY = drawTotals(request.totals, y: 136)
+        drawFooterSections(request: request, y: totalsEndY + 32)
+        drawPageNumber(pageNumber)
+    }
+
+    private static func paginatedLineItems(_ lineItems: [CalculationLineItem]) -> [[CalculationLineItem]] {
+        var pages: [[CalculationLineItem]] = []
+        var startIndex = 0
+        var limit = firstPageLineItemLimit
+
+        while startIndex < lineItems.count {
+            let endIndex = min(startIndex + limit, lineItems.count)
+            pages.append(Array(lineItems[startIndex..<endIndex]))
+            startIndex = endIndex
+            limit = continuationPageLineItemLimit
+        }
+
+        return pages
+    }
+
+    private static func drawAccentLine(in bounds: CGRect) {
+        UIColor(red: 0.094, green: 0.749, blue: 0.765, alpha: 1).setFill()
+        UIBezierPath(rect: CGRect(x: 0, y: 0, width: bounds.width, height: PDFLayout.accentHeight)).fill()
+    }
+
+    private static func drawLineItems(_ lineItems: [CalculationLineItem], startingAt startY: CGFloat) -> CGFloat {
+        var y = startY
+        lineItems.forEach { item in
+            draw(item.description, at: CGPoint(x: PDFLayout.margin + 8, y: y + 6), font: .systemFont(ofSize: 10), width: 252)
             draw("\(NSDecimalNumber(decimal: item.quantity))", at: CGPoint(x: 330, y: y + 6), font: .systemFont(ofSize: 10), alignment: .right, width: 48)
             draw(CurrencyFormatter.string(from: item.unitPrice), at: CGPoint(x: 390, y: y + 6), font: .systemFont(ofSize: 10), alignment: .right, width: 70)
             draw(CurrencyFormatter.string(from: item.lineTotal), at: CGPoint(x: 486, y: y + 6), font: .systemFont(ofSize: 10), alignment: .right, width: 84)
             strokeLine(y: y + PDFLayout.rowHeight)
             y += PDFLayout.rowHeight
         }
+        return y
+    }
 
-        y += 22
-        drawTotals(request.totals, y: y)
-
-        let footerY: CGFloat = 650
-        if !request.notes.isEmpty {
-            draw("Notes", at: CGPoint(x: PDFLayout.margin, y: footerY), font: .boldSystemFont(ofSize: 11))
-            draw(request.notes, at: CGPoint(x: PDFLayout.margin, y: footerY + 18), font: .systemFont(ofSize: 10), color: .darkGray, width: 250)
-        }
-        if !request.terms.isEmpty {
-            draw("Terms", at: CGPoint(x: 330, y: footerY), font: .boldSystemFont(ofSize: 11))
-            draw(request.terms, at: CGPoint(x: 330, y: footerY + 18), font: .systemFont(ofSize: 10), color: .darkGray, width: 240)
-        }
-
-        draw("Thank you for your business.", at: CGPoint(x: PDFLayout.margin, y: 742), font: .boldSystemFont(ofSize: 11), color: UIColor(red: 0.055, green: 0.561, blue: 0.580, alpha: 1))
+    private static func drawContinuationNotice(pageNumber: Int) {
+        draw(
+            "Continued on next page",
+            at: CGPoint(x: PDFLayout.margin, y: 742),
+            font: .systemFont(ofSize: 10),
+            color: .darkGray
+        )
     }
 
     private static func drawTableHeader(y: CGFloat) {
@@ -88,7 +184,7 @@ enum PDFRenderService {
         strokeLine(y: y + PDFLayout.rowHeight)
     }
 
-    private static func drawTotals(_ totals: DocumentTotals, y startY: CGFloat) {
+    private static func drawTotals(_ totals: DocumentTotals, y startY: CGFloat) -> CGFloat {
         var y = startY
         let rows: [(String, Decimal, Bool)] = [
             ("Subtotal", totals.subtotal, false),
@@ -104,6 +200,60 @@ enum PDFRenderService {
             draw(CurrencyFormatter.string(from: amount), at: CGPoint(x: 486, y: y), font: font, alignment: .right, width: 84)
             y += 18
         }
+
+        return y
+    }
+
+    private static func drawFooterSections(request: PDFRenderRequest, y startY: CGFloat) {
+        var y = startY
+
+        if !request.notes.isEmpty || !request.terms.isEmpty {
+            if !request.notes.isEmpty {
+                draw("Notes", at: CGPoint(x: PDFLayout.margin, y: y), font: .boldSystemFont(ofSize: 11))
+                draw(request.notes, at: CGPoint(x: PDFLayout.margin, y: y + 18), font: .systemFont(ofSize: 10), color: .darkGray, width: 250)
+            }
+            if !request.terms.isEmpty {
+                draw("Terms", at: CGPoint(x: 330, y: y), font: .boldSystemFont(ofSize: 11))
+                draw(request.terms, at: CGPoint(x: 330, y: y + 18), font: .systemFont(ofSize: 10), color: .darkGray, width: 240)
+            }
+            y += 108
+        }
+
+        if drawImage(from: request.signatureURL, in: CGRect(x: PDFLayout.margin, y: y + 18, width: 160, height: 58)) {
+            draw("Signature", at: CGPoint(x: PDFLayout.margin, y: y), font: .boldSystemFont(ofSize: 11))
+            y += 90
+        }
+
+        draw(
+            "Thank you for your business.",
+            at: CGPoint(x: PDFLayout.margin, y: max(y, 742)),
+            font: .boldSystemFont(ofSize: 11),
+            color: UIColor(red: 0.055, green: 0.561, blue: 0.580, alpha: 1)
+        )
+    }
+
+    @discardableResult
+    private static func drawImage(from url: URL?, in rect: CGRect) -> Bool {
+        guard let url, let image = UIImage(contentsOfFile: url.path) else { return false }
+
+        let imageAspectRatio = image.size.width / max(image.size.height, 1)
+        let rectAspectRatio = rect.width / max(rect.height, 1)
+        let drawRect: CGRect
+
+        if imageAspectRatio > rectAspectRatio {
+            let height = rect.width / imageAspectRatio
+            drawRect = CGRect(x: rect.minX, y: rect.midY - height / 2, width: rect.width, height: height)
+        } else {
+            let width = rect.height * imageAspectRatio
+            drawRect = CGRect(x: rect.midX - width / 2, y: rect.minY, width: width, height: rect.height)
+        }
+
+        image.draw(in: drawRect)
+        return true
+    }
+
+    private static func drawPageNumber(_ pageNumber: Int) {
+        draw("Page \(pageNumber)", at: CGPoint(x: 486, y: 760), font: .systemFont(ofSize: 9), color: .darkGray, alignment: .right, width: 84)
     }
 
     private static func strokeLine(y: CGFloat) {

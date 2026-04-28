@@ -53,16 +53,16 @@ Yes
 10. Organization identifier:
 
 ```text
-com.yourname
+com.tradebillcanada
 ```
 
 11. Bundle identifier:
 
 ```text
-com.yourname.tradebillcanada
+com.tradebillcanada.app
 ```
 
-Replace `yourname` before release.
+Confirm this bundle ID is available in App Store Connect before release, or replace it with the identifier registered to your Apple Developer account.
 
 ## Deployment
 
@@ -114,4 +114,3 @@ After adding the first app shell:
 3. Get Started opens business setup.
 4. Skip or save opens home dashboard.
 5. No crash on simulator relaunch.
-

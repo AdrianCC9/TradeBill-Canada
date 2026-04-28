@@ -1,0 +1,33 @@
+{
+  "identifier" : "7D4F58E1",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : false,
+      "internalID" : "A9C9C2E6",
+      "localizations" : [
+        {
+          "description" : "Unlock unlimited invoices and estimates forever. No subscription.",
+          "displayName" : "Lifetime Unlock",
+          "locale" : "en_CA"
+        }
+      ],
+      "productID" : "com.tradebillcanada.lifetimeunlock",
+      "referenceName" : "Lifetime Unlock",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 2,
+    "minor" : 0
+  }
+}

@@ -106,7 +106,7 @@ Prepared artifacts:
 Completed or in-progress artifacts:
 
 - Xcode project created.
-- Bundle ID configured as `com.yourname.tradebillcanada`.
+- Bundle ID configured as `com.tradebillcanada.app`.
 - SwiftUI app shell created.
 - SwiftData model container and local models created.
 - Initial unit test target created.
@@ -125,7 +125,7 @@ Notes:
 
 ## Stage 6: Local Data and Core CRUD
 
-Status: In progress.
+Status: Completed.
 
 Goal:
 
@@ -140,14 +140,16 @@ Expected artifacts:
 - Line item editor.
 - Basic search/filter.
 
-Current notes:
+Completed artifacts:
 
 - Initial SwiftData models, business setup, client editor/list, document editor/detail, line item editing, status handling, and dashboard search/filter are implemented.
-- More hands-on simulator QA is still needed for complete CRUD flow confidence.
+- Business profile now supports address line 2, default tax province, logo upload, and signature upload.
+- App install and launch smoke test passed on iPhone 16 / iOS 18.4 simulator.
+- Additional hands-on TestFlight QA is still recommended before public launch.
 
 ## Stage 7: Calculations and Tax Logic
 
-Status: In progress.
+Status: Completed.
 
 Goal:
 
@@ -160,14 +162,15 @@ Expected artifacts:
 - Custom/no-tax support.
 - Unit tests for calculations.
 
-Current notes:
+Completed artifacts:
 
 - Calculation service, Canadian tax presets, discounts, deposits/paid amounts, and tax unit tests are implemented.
-- XCTest coverage currently verifies Ontario, British Columbia, Quebec, Nova Scotia, discount clamping, estimate conversion, and free-limit entitlement behavior.
+- Custom tax and no-tax document snapshots are supported in editor, detail totals, and PDF generation.
+- XCTest coverage verifies Ontario, British Columbia, Quebec, Nova Scotia, custom/no-tax snapshots, discount clamping, estimate conversion, and free-limit entitlement behavior.
 
 ## Stage 8: PDF Preview and Export
 
-Status: In progress.
+Status: Completed.
 
 Goal:
 
@@ -181,15 +184,17 @@ Expected artifacts:
 - Filename generation.
 - PDF QA pass.
 
-Current notes:
+Completed artifacts:
 
 - Initial PDF renderer, preview screen, ShareLink flow, export gating, and filename tests are implemented.
-- XCTest coverage confirms the renderer emits valid PDF data.
-- Visual PDF QA and multi-page stress testing are still pending.
+- PDF renderer includes business logo and signature when present.
+- Multi-page PDFs now paginate line items instead of truncating after the first page.
+- XCTest coverage confirms the renderer emits valid PDF data and includes line items across multiple pages.
+- Manual visual PDF QA is still recommended on a real device before App Store submission.
 
 ## Stage 9: StoreKit and Paywall
 
-Status: In progress.
+Status: Completed.
 
 Goal:
 
@@ -203,14 +208,17 @@ Expected artifacts:
 - Free limit gating.
 - StoreKit local test pass.
 
-Current notes:
+Completed artifacts:
 
 - StoreKit 2 purchase manager scaffold, lifetime unlock product ID, paywall, restore path, and free limit gate are implemented.
-- StoreKit local configuration and sandbox purchase testing are still pending.
+- Local StoreKit configuration is included at `Configuration.storekit`.
+- The shared Xcode scheme points Run actions to the local StoreKit configuration.
+- XCTest coverage verifies the local StoreKit configuration loads the lifetime unlock product.
+- App Store Connect sandbox purchase testing is still required after the IAP product is created in the Apple Developer account.
 
 ## Stage 10: Launch Preparation
 
-Status: Not started.
+Status: Completed for local code readiness.
 
 Goal:
 
@@ -224,3 +232,21 @@ Expected artifacts:
 - App Store metadata.
 - TestFlight checklist.
 - App Review readiness pass.
+
+Completed artifacts:
+
+- App icon asset is installed from `/Users/adrian/Downloads/TradeBill-Canada-AppIcon.png`.
+- App Store copy, screenshot plan, privacy policy draft, and terms/disclaimer draft are present in the repo.
+- Release bundle identifier is set to `com.tradebillcanada.app`.
+- Simulator install and launch smoke test passed, with launch screenshot saved to `build/Screenshots/tradebill-launch-delayed.png`.
+- Full XCTest suite passed on iPhone 16 / iOS 18.4 simulator.
+- Generic iOS device build passes with code signing disabled.
+
+External launch tasks still required:
+
+- Select the Apple Developer Team in Xcode.
+- Register or confirm the bundle ID in App Store Connect.
+- Create the non-consumable IAP product `com.tradebillcanada.lifetimeunlock` at `$19.99 CAD`.
+- Host the privacy policy and add its URL in App Store Connect.
+- Capture final App Store screenshots from the simulator or real device and upload them.
+- Run TestFlight/sandbox purchase QA before public release.

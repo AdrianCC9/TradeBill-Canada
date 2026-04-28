@@ -37,12 +37,33 @@ enum TaxPresetService {
     }
 
     static func custom(label: String, ratePercent: Decimal) -> TaxPreset {
-        TaxPreset(
-            id: "custom-\(label)-\(ratePercent)",
+        let cleanLabel = label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Custom Tax"
+            : label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return TaxPreset(
+            id: "custom-\(cleanLabel)-\(ratePercent)",
             provinceCode: nil,
-            displayName: "\(label) \(ratePercent)%",
-            pdfLabel: "\(label) \(ratePercent)%",
-            components: [TaxComponent(label: label, ratePercent: ratePercent)]
+            displayName: "\(cleanLabel) \(ratePercent)%",
+            pdfLabel: "\(cleanLabel) \(ratePercent)%",
+            components: [TaxComponent(label: cleanLabel, ratePercent: ratePercent)]
+        )
+    }
+
+    static func preset(for document: Document) -> TaxPreset {
+        if
+            let code = document.taxProvinceCode,
+            let province = CanadianProvince.allCases.first(where: { $0.code == code })
+        {
+            return preset(for: province)
+        }
+
+        guard document.taxRatePercent > 0 else {
+            return noTax
+        }
+
+        return custom(
+            label: customLabel(from: document.taxLabel, ratePercent: document.taxRatePercent),
+            ratePercent: Decimal(document.taxRatePercent)
         )
     }
 
@@ -54,6 +75,21 @@ enum TaxPresetService {
             return noTax
         }
         return preset(for: province)
+    }
+
+    private static func customLabel(from taxLabel: String, ratePercent: Double) -> String {
+        let fallback = "Custom Tax"
+        let trimmed = taxLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != noTax.pdfLabel else { return fallback }
+
+        let rate = NSDecimalNumber(value: ratePercent).stringValue
+        let suffixes = [" \(rate)%", "\(rate)%", " %"]
+        let label = suffixes.reduce(trimmed) { partial, suffix in
+            partial.hasSuffix(suffix) ? String(partial.dropLast(suffix.count)) : partial
+        }
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return label.isEmpty ? fallback : label
     }
 
     private static func simple(province: CanadianProvince, label: String, rate: String) -> TaxPreset {
@@ -81,4 +117,3 @@ enum TaxPresetService {
         )
     }
 }
-

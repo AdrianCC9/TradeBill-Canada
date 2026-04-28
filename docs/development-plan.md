@@ -25,7 +25,7 @@ When the MacBook is available:
 4. Set the bundle ID.
 
 ```text
-com.yourname.tradebillcanada
+com.tradebillcanada.app
 ```
 
 5. Add the prepared docs/design assets to the Xcode project as needed.
@@ -85,4 +85,3 @@ Minimum launch checks:
 - Purchase unlock.
 - Restore purchase.
 - Enforce free limit behavior.
-

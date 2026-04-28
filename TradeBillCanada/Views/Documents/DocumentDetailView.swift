@@ -8,6 +8,20 @@ struct DocumentDetailView: View {
     let document: Document
     @State private var showingEditor = false
 
+    private var computedTotals: DocumentTotals {
+        CalculationService.calculate(
+            CalculationInput(
+                lineItems: document.sortedLineItems.map(\.calculationLineItem),
+                discountType: document.discountType,
+                discountValue: document.discountType == .percentage
+                    ? Decimal(document.discountPercentage)
+                    : Decimal.dollars(from: document.discountValueCents),
+                taxPreset: TaxPresetService.preset(for: document),
+                amountPaid: Decimal.dollars(from: document.amountPaidCents)
+            )
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -119,7 +133,7 @@ struct DocumentDetailView: View {
         VStack(spacing: 10) {
             amountRow("Subtotal", document.subtotalCents)
             if document.discountType != .none {
-                amountRow("Discount", -document.discountValueCents)
+                amountRow("Discount", -computedTotals.discountAmount.cents)
             }
             amountRow(document.taxLabel, document.taxAmountCents)
             amountRow("Paid", -document.amountPaidCents)

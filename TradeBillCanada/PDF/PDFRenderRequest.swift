@@ -13,12 +13,14 @@ struct PDFRenderRequest {
     var totals: DocumentTotals
     var notes: String
     var terms: String
+    var logoURL: URL? = nil
+    var signatureURL: URL? = nil
 
     static func make(
         document: Document,
         businessProfile: BusinessProfile?
     ) -> PDFRenderRequest {
-        let preset = TaxPresetService.preset(matchingProvinceCode: document.taxProvinceCode)
+        let preset = TaxPresetService.preset(for: document)
         let totals = CalculationService.calculate(
             CalculationInput(
                 lineItems: document.sortedLineItems.map(\.calculationLineItem),
@@ -59,8 +61,9 @@ struct PDFRenderRequest {
             lineItems: document.sortedLineItems.map(\.calculationLineItem),
             totals: totals,
             notes: document.notes,
-            terms: document.terms
+            terms: document.terms,
+            logoURL: ImageStorageService.url(for: businessProfile?.logoImagePath ?? ""),
+            signatureURL: ImageStorageService.url(for: businessProfile?.signatureImagePath ?? "")
         )
     }
 }
-
