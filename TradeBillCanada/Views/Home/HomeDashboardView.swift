@@ -20,6 +20,28 @@ private enum NewDocumentSheet: Identifiable {
     }
 }
 
+private enum DocumentFilter: String, CaseIterable, Identifiable {
+    case all
+    case estimates
+    case invoices
+    case unpaid
+    case drafts
+    case overdue
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .all: "All"
+        case .estimates: "Estimates"
+        case .invoices: "Invoices"
+        case .unpaid: "Unpaid"
+        case .drafts: "Drafts"
+        case .overdue: "Overdue"
+        }
+    }
+}
+
 struct HomeDashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var purchaseManager: PurchaseManager
@@ -30,16 +52,19 @@ struct HomeDashboardView: View {
     @State private var searchText = ""
     @State private var newDocumentSheet: NewDocumentSheet?
     @State private var showingPaywall = false
+    @State private var selectedFilter = DocumentFilter.all
 
     private var filteredDocuments: [Document] {
         let sorted = documents.sorted { $0.updatedAt > $1.updatedAt }
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return sorted
+        let filteredByType = sorted.filter(matchesSelectedFilter)
+        let cleanSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanSearch.isEmpty else {
+            return filteredByType
         }
-        return sorted.filter {
-            $0.documentNumber.localizedCaseInsensitiveContains(searchText)
-                || $0.displayClientName.localizedCaseInsensitiveContains(searchText)
-                || $0.title.localizedCaseInsensitiveContains(searchText)
+        return filteredByType.filter {
+            $0.documentNumber.localizedCaseInsensitiveContains(cleanSearch)
+                || $0.displayClientName.localizedCaseInsensitiveContains(cleanSearch)
+                || $0.title.localizedCaseInsensitiveContains(cleanSearch)
         }
     }
 
@@ -71,10 +96,12 @@ struct HomeDashboardView: View {
                 TextField("Search documents", text: $searchText)
                     .textFieldStyle(.roundedBorder)
 
+                filterChips
+
                 if filteredDocuments.isEmpty {
                     EmptyStateView(
-                        title: "No documents yet",
-                        message: "Create your first estimate or invoice and it will show up here.",
+                        title: documents.isEmpty ? "No documents yet" : "No matching documents",
+                        message: documents.isEmpty ? "Create your first estimate or invoice and it will show up here." : "Try another search or filter.",
                         systemImage: "doc.text.magnifyingglass"
                     )
                 } else {
@@ -93,13 +120,13 @@ struct HomeDashboardView: View {
             .padding(20)
         }
         .background(AppTheme.offWhite)
-        .navigationTitle("TradeBill")
+        .navigationTitle("TradeBill Canada")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showingPaywall = true
                 } label: {
-                    Image(systemName: EntitlementGate.isUnlocked(settings: settings.first, purchaseState: purchaseStates.first) ? "checkmark.seal.fill" : "lock.open")
+                    Image(systemName: EntitlementGate.isUnlocked(settings: settings.first, purchaseState: purchaseStates.first) ? "checkmark.seal.fill" : "lock.fill")
                 }
                 .foregroundStyle(AppTheme.deepTurquoise)
             }
@@ -157,6 +184,34 @@ struct HomeDashboardView: View {
         )
     }
 
+    private var filterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(DocumentFilter.allCases) { filter in
+                    Button {
+                        selectedFilter = filter
+                    } label: {
+                        Text(filter.displayName)
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(selectedFilter == filter ? .white : AppTheme.deepTurquoise)
+                            .background(
+                                selectedFilter == filter ? AppTheme.turquoise : .white,
+                                in: Capsule()
+                            )
+                            .overlay {
+                                Capsule()
+                                    .stroke(AppTheme.borderGray, lineWidth: selectedFilter == filter ? 0 : 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
     private func startNewDocument(_ type: DocumentType) {
         syncPurchaseStateIfNeeded()
         if EntitlementGate.canCreateDocument(settings: settings.first, purchaseState: purchaseStates.first) {
@@ -173,5 +228,21 @@ struct HomeDashboardView: View {
         purchaseStates.first?.lastVerifiedAt = .now
         try? modelContext.save()
     }
-}
 
+    private func matchesSelectedFilter(_ document: Document) -> Bool {
+        switch selectedFilter {
+        case .all:
+            true
+        case .estimates:
+            document.type == .estimate
+        case .invoices:
+            document.type == .invoice
+        case .unpaid:
+            document.type == .invoice && document.balanceDueCents > 0
+        case .drafts:
+            document.statusRawValue == EstimateStatus.draft.rawValue || document.statusRawValue == InvoiceStatus.draft.rawValue
+        case .overdue:
+            document.isOverdue
+        }
+    }
+}

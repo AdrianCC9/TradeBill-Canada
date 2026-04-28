@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct ClientListView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query private var clients: [Client]
     @State private var showingEditor = false
     @State private var searchText = ""
@@ -42,6 +43,7 @@ struct ClientListView: View {
                         }
                     }
                 }
+                .onDelete(perform: deleteClients)
             }
         }
         .searchable(text: $searchText)
@@ -63,5 +65,10 @@ struct ClientListView: View {
             }
         }
     }
-}
 
+    private func deleteClients(at offsets: IndexSet) {
+        let clientsToDelete = offsets.map { filteredClients[$0] }
+        clientsToDelete.forEach(modelContext.delete)
+        try? modelContext.save()
+    }
+}

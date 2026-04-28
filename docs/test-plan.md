@@ -97,6 +97,7 @@
 - Filter unpaid invoices.
 - Filter drafts.
 - Overdue status updates when due date has passed.
+- Filter overdue invoices.
 
 ### Free Limit and Purchase
 
@@ -116,10 +117,14 @@
 - Money calculations use Decimal.
 - Document numbering increments correctly.
 - Estimate-to-invoice copy logic preserves expected fields.
+- Document client snapshots clear correctly when a client is removed.
+- Past-due unpaid invoices display as overdue.
 - Tax presets return expected components.
 - Tax calculations round correctly.
 - Free limit logic blocks only new creation/export.
 - PDF filename sanitizer removes invalid characters.
+- PDF output includes paid/deposit amount rows.
+- PDF output includes all line items across multiple pages.
 
 ## Device Coverage
 
@@ -131,4 +136,4 @@ Test on at least:
 - Light mode.
 - Dark mode if supported.
 - Offline mode.
-
+- Fresh install smoke screenshot with `scripts/smoke-ios-simulator.sh`.

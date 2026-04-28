@@ -8,6 +8,7 @@ struct BusinessSetupView: View {
 
     var existingProfile: BusinessProfile?
     var onSkip: (() -> Void)?
+    var onSaved: (() -> Void)?
 
     @State private var businessName = ""
     @State private var ownerName = ""
@@ -26,6 +27,11 @@ struct BusinessSetupView: View {
     @State private var selectedLogoItem: PhotosPickerItem?
     @State private var selectedSignatureItem: PhotosPickerItem?
     @State private var imageErrorMessage: String?
+    @State private var saveErrorMessage: String?
+
+    private var primaryActionTitle: String {
+        existingProfile == nil ? "Continue to App" : "Save Changes"
+    }
 
     var body: some View {
         Form {
@@ -94,7 +100,34 @@ struct BusinessSetupView: View {
             }
 
             Section {
-                PrimaryButton(title: existingProfile == nil ? "Save Business Profile" : "Update Business Profile") {
+                Text("You can update these details later in Settings.")
+                    .font(.footnote)
+                    .foregroundStyle(AppTheme.mutedText)
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(AppTheme.offWhite)
+        .navigationTitle(existingProfile == nil ? "Business Setup" : "Business Profile")
+        .toolbar {
+            if existingProfile != nil {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+
+            if let onSkip {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Skip") {
+                        onSkip()
+                    }
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 10) {
+                PrimaryButton(title: primaryActionTitle, systemImage: "arrow.right") {
                     save()
                 }
 
@@ -102,15 +135,31 @@ struct BusinessSetupView: View {
                     Button("Skip for now") {
                         onSkip()
                     }
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(AppTheme.mutedText)
-                    .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
-            .listRowBackground(Color.clear)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
+            .background(.white)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(AppTheme.borderGray)
+                    .frame(height: 1)
+            }
         }
-        .scrollContentBackground(.hidden)
-        .background(AppTheme.offWhite)
-        .navigationTitle(existingProfile == nil ? "Business Setup" : "Business Profile")
+        .alert(
+            "Couldn’t save business profile",
+            isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "Please try again.")
+        }
         .onAppear(perform: populate)
         .onChange(of: selectedLogoItem) { _, newItem in
             Task {
@@ -207,8 +256,14 @@ struct BusinessSetupView: View {
         if existingProfile == nil {
             modelContext.insert(profile)
         }
-        try? modelContext.save()
-        dismiss()
+
+        do {
+            try modelContext.save()
+            onSaved?()
+            dismiss()
+        } catch {
+            saveErrorMessage = "Your business profile could not be saved. Please try again."
+        }
     }
 
     @MainActor

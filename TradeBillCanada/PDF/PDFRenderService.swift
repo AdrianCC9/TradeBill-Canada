@@ -98,7 +98,7 @@ enum PDFRenderService {
         y = drawLineItems(lineItems, startingAt: y)
 
         if includeSummary {
-            let totalsEndY = drawTotals(request.totals, y: y + 22)
+            let totalsEndY = drawTotals(request: request, y: y + 22)
             drawFooterSections(request: request, y: totalsEndY + 22)
         } else {
             drawContinuationNotice(pageNumber: pageNumber)
@@ -127,7 +127,7 @@ enum PDFRenderService {
         draw(request.businessName, at: CGPoint(x: PDFLayout.margin, y: PDFLayout.margin), font: .boldSystemFont(ofSize: 14))
         draw("No. \(request.documentNumber)", at: CGPoint(x: 410, y: PDFLayout.margin), font: .systemFont(ofSize: 11), alignment: .right, width: 160)
         draw("Summary", at: CGPoint(x: PDFLayout.margin, y: 94), font: .boldSystemFont(ofSize: 18))
-        let totalsEndY = drawTotals(request.totals, y: 136)
+        let totalsEndY = drawTotals(request: request, y: 136)
         drawFooterSections(request: request, y: totalsEndY + 32)
         drawPageNumber(pageNumber)
     }
@@ -184,15 +184,26 @@ enum PDFRenderService {
         strokeLine(y: y + PDFLayout.rowHeight)
     }
 
-    private static func drawTotals(_ totals: DocumentTotals, y startY: CGFloat) -> CGFloat {
+    private static func drawTotals(request: PDFRenderRequest, y startY: CGFloat) -> CGFloat {
         var y = startY
-        let rows: [(String, Decimal, Bool)] = [
-            ("Subtotal", totals.subtotal, false),
-            ("Discount", -totals.discountAmount, false)
-        ] + totals.taxLines.map { ("\($0.label) \($0.ratePercent)%", $0.amount, false) } + [
-            ("Total", totals.total, true),
-            ("Balance Due", totals.balanceDue, true)
+        var rows: [(String, Decimal, Bool)] = [
+            ("Subtotal", request.totals.subtotal, false)
         ]
+
+        if request.totals.discountAmount > .zero {
+            rows.append(("Discount", -request.totals.discountAmount, false))
+        }
+
+        rows.append(contentsOf: request.totals.taxLines.map { ("\($0.label) \($0.ratePercent)%", $0.amount, false) })
+
+        if request.amountPaid > .zero {
+            rows.append((request.documentType == .estimate ? "Deposit / Paid" : "Paid", -request.amountPaid, false))
+        }
+
+        rows.append(contentsOf: [
+            ("Total", request.totals.total, true),
+            ("Balance Due", request.totals.balanceDue, true)
+        ])
 
         rows.forEach { label, amount, isBold in
             let font: UIFont = isBold ? .boldSystemFont(ofSize: 12) : .systemFont(ofSize: 11)

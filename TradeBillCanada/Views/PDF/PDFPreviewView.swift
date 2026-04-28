@@ -1,9 +1,12 @@
 import PDFKit
 import SwiftData
 import SwiftUI
+import StoreKit
 
 struct PDFPreviewView: View {
+    @Environment(\.requestReview) private var requestReview
     @EnvironmentObject private var purchaseManager: PurchaseManager
+    @AppStorage("hasRequestedReviewAfterPDFShare") private var hasRequestedReviewAfterPDFShare = false
     @Query private var businessProfiles: [BusinessProfile]
     @Query private var settings: [AppSettings]
     @Query private var purchaseStates: [PurchaseState]
@@ -19,6 +22,10 @@ struct PDFPreviewView: View {
             || purchaseManager.hasLifetimeUnlock
     }
 
+    private var isMissingBusinessName: Bool {
+        businessProfiles.first?.businessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if let pdfData {
@@ -29,14 +36,26 @@ struct PDFPreviewView: View {
             }
 
             VStack(spacing: 10) {
+                if isMissingBusinessName {
+                    Label("Tip: add your business name in Settings before sending this PDF.", systemImage: "exclamationmark.triangle")
+                        .font(.footnote)
+                        .foregroundStyle(AppTheme.warningOrange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 if let pdfURL, canExport {
                     ShareLink(item: pdfURL) {
-                        Label("Share PDF", systemImage: "square.and.arrow.up")
+                        Label("Share or Save PDF", systemImage: "square.and.arrow.up")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(AppTheme.turquoise)
+                    .simultaneousGesture(
+                        TapGesture().onEnded {
+                            requestReviewAfterShareIntentIfNeeded()
+                        }
+                    )
                 } else {
                     Button {
                         showingPaywall = true
@@ -71,6 +90,12 @@ struct PDFPreviewView: View {
             filename: PDFFilenameService.filename(for: document)
         )
     }
+
+    private func requestReviewAfterShareIntentIfNeeded() {
+        guard !hasRequestedReviewAfterPDFShare else { return }
+        hasRequestedReviewAfterPDFShare = true
+        requestReview()
+    }
 }
 
 private struct PDFKitPreview: UIViewRepresentable {
@@ -89,4 +114,3 @@ private struct PDFKitPreview: UIViewRepresentable {
         view.document = PDFDocument(data: data)
     }
 }
-

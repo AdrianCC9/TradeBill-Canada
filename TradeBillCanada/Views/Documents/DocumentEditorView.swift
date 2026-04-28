@@ -42,6 +42,8 @@ struct DocumentEditorView: View {
     @State private var amountPaid = ""
     @State private var notes = ""
     @State private var terms = "Payment due within 14 days."
+    @State private var showingClientEditor = false
+    @State private var saveErrorMessage: String?
 
     init(documentType: DocumentType, existingDocument: Document? = nil) {
         self.documentType = documentType
@@ -84,6 +86,12 @@ struct DocumentEditorView: View {
                     ForEach(clients.sorted { $0.displayName < $1.displayName }) { client in
                         Text(client.displayName).tag(Optional(client.id))
                     }
+                }
+
+                Button {
+                    showingClientEditor = true
+                } label: {
+                    Label(clients.isEmpty ? "Add your first client" : "Add new client", systemImage: "person.badge.plus")
                 }
             }
 
@@ -177,6 +185,24 @@ struct DocumentEditorView: View {
                     .disabled(lineItems.allSatisfy { $0.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
             }
         }
+        .sheet(isPresented: $showingClientEditor) {
+            NavigationStack {
+                ClientEditorView(client: nil) { savedClient in
+                    selectedClientID = savedClient.id
+                }
+            }
+        }
+        .alert(
+            "Couldn’t save document",
+            isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "Please try again.")
+        }
         .onAppear(perform: populate)
     }
 
@@ -235,6 +261,14 @@ struct DocumentEditorView: View {
     }
 
     private func save() {
+        let cleanLineItems = lineItems.filter {
+            !$0.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        guard !cleanLineItems.isEmpty else {
+            saveErrorMessage = "Add at least one line item description before saving."
+            return
+        }
+
         let appSettings = settings.first ?? AppSettings()
         if settings.isEmpty {
             modelContext.insert(appSettings)
@@ -265,13 +299,13 @@ struct DocumentEditorView: View {
         document.balanceDueCents = totals.balanceDue.cents
         document.notes = notes
         document.terms = terms
-        document.statusRawValue = statusAfterSave(for: documentType, totals: totals)
+        document.statusRawValue = statusAfterSave(for: documentType, existingStatus: existingDocument?.statusRawValue, totals: totals)
         document.updatedAt = .now
 
         document.lineItems.forEach { modelContext.delete($0) }
-        document.lineItems = lineItems.enumerated().map { index, item in
+        document.lineItems = cleanLineItems.enumerated().map { index, item in
             LineItem(
-                itemDescription: item.description,
+                itemDescription: item.description.trimmingCharacters(in: .whitespacesAndNewlines),
                 quantity: NSDecimalNumber(decimal: item.quantity.decimalValue).doubleValue,
                 unitPriceCents: item.unitPrice.decimalValue.cents,
                 sortOrder: index,
@@ -285,14 +319,19 @@ struct DocumentEditorView: View {
             appSettings.freeDocumentsCreated += 1
             appSettings.updatedAt = .now
         }
-        try? modelContext.save()
-        dismiss()
+
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            saveErrorMessage = "This document could not be saved. Please try again."
+        }
     }
 
-    private func statusAfterSave(for type: DocumentType, totals: DocumentTotals) -> String {
+    private func statusAfterSave(for type: DocumentType, existingStatus: String?, totals: DocumentTotals) -> String {
         switch type {
         case .estimate:
-            return EstimateStatus.draft.rawValue
+            return existingStatus ?? EstimateStatus.draft.rawValue
         case .invoice:
             if totals.balanceDue <= .zero { return InvoiceStatus.paid.rawValue }
             if amountPaid.decimalValue > .zero { return InvoiceStatus.partiallyPaid.rawValue }

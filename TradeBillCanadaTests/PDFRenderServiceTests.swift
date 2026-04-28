@@ -97,4 +97,42 @@ final class PDFRenderServiceTests: XCTestCase {
         XCTAssertTrue(extractedText.contains("Service line 30"))
         XCTAssertTrue(extractedText.contains("Summary"))
     }
+
+    func testRenderIncludesInvoicePaidAmountInTotals() {
+        let lineItems = [
+            CalculationLineItem(description: "Deposit job", quantity: 1, unitPrice: 300)
+        ]
+        let totals = CalculationService.calculate(
+            CalculationInput(
+                lineItems: lineItems,
+                discountType: .none,
+                discountValue: 0,
+                taxPreset: TaxPresetService.preset(for: .ON),
+                amountPaid: 150
+            )
+        )
+        let request = PDFRenderRequest(
+            businessName: "TradeBill Test Co.",
+            businessContactLines: ["Toronto, ON", "test@example.com"],
+            documentType: .invoice,
+            documentNumber: "INV-0010",
+            issueDate: Date(timeIntervalSinceReferenceDate: 1_000_000),
+            dueDate: Date(timeIntervalSinceReferenceDate: 1_086_400),
+            clientLines: ["Jane Client"],
+            title: "Deposit job",
+            lineItems: lineItems,
+            totals: totals,
+            amountPaid: 150,
+            notes: "",
+            terms: ""
+        )
+
+        let data = PDFRenderService.render(request: request)
+        let document = PDFDocument(data: data)
+        let extractedText = document?.page(at: 0)?.string ?? ""
+
+        XCTAssertTrue(extractedText.contains("Paid"))
+        XCTAssertTrue(extractedText.contains("-$150.00"))
+        XCTAssertTrue(extractedText.contains("Balance Due"))
+    }
 }

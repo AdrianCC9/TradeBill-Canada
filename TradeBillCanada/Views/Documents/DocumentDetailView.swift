@@ -2,11 +2,17 @@ import SwiftData
 import SwiftUI
 
 struct DocumentDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var purchaseManager: PurchaseManager
     @Query private var settings: [AppSettings]
+    @Query private var purchaseStates: [PurchaseState]
 
     let document: Document
     @State private var showingEditor = false
+    @State private var showingPaywall = false
+    @State private var showingDeleteConfirmation = false
+    @State private var userMessage: String?
 
     private var computedTotals: DocumentTotals {
         CalculationService.calculate(
@@ -68,7 +74,11 @@ struct DocumentDetailView: View {
 
                     if document.type == .estimate && document.statusRawValue != EstimateStatus.converted.rawValue {
                         Button {
-                            convertToInvoice()
+                            if canCreateAnotherDocument {
+                                convertToInvoice()
+                            } else {
+                                showingPaywall = true
+                            }
                         } label: {
                             Label("Convert to Invoice", systemImage: "arrow.triangle.2.circlepath")
                                 .frame(maxWidth: .infinity)
@@ -85,6 +95,14 @@ struct DocumentDetailView: View {
                         }
                         .buttonStyle(.bordered)
                     }
+
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete Document", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
             .padding(20)
@@ -96,6 +114,37 @@ struct DocumentDetailView: View {
                 DocumentEditorView(documentType: document.type, existingDocument: document)
             }
         }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+        }
+        .confirmationDialog(
+            "Delete \(document.documentNumber)?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Document", role: .destructive) {
+                deleteDocument()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the document from this device. Your free document count will not reset.")
+        }
+        .alert(
+            "TradeBill Canada",
+            isPresented: Binding(
+                get: { userMessage != nil },
+                set: { if !$0 { userMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(userMessage ?? "")
+        }
+    }
+
+    private var canCreateAnotherDocument: Bool {
+        EntitlementGate.canCreateDocument(settings: settings.first, purchaseState: purchaseStates.first)
+            || purchaseManager.hasLifetimeUnlock
     }
 
     private var header: some View {
@@ -160,7 +209,12 @@ struct DocumentDetailView: View {
         }
         let invoice = DocumentConversionService.makeInvoice(from: document, settings: appSettings)
         modelContext.insert(invoice)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            userMessage = "Created invoice \(invoice.documentNumber)."
+        } catch {
+            userMessage = "That estimate could not be converted. Please try again."
+        }
     }
 
     private func markPaid() {
@@ -168,7 +222,22 @@ struct DocumentDetailView: View {
         document.balanceDueCents = 0
         document.statusRawValue = InvoiceStatus.paid.rawValue
         document.updatedAt = .now
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            userMessage = "Marked \(document.documentNumber) as paid."
+        } catch {
+            userMessage = "That invoice could not be updated. Please try again."
+        }
+    }
+
+    private func deleteDocument() {
+        modelContext.delete(document)
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            userMessage = "That document could not be deleted. Please try again."
+        }
     }
 }
 

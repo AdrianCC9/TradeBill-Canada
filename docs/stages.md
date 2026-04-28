@@ -241,6 +241,10 @@ Completed artifacts:
 - Simulator install and launch smoke test passed, with launch screenshot saved to `build/Screenshots/tradebill-launch-delayed.png`.
 - Full XCTest suite passed on iPhone 16 / iOS 18.4 simulator.
 - Generic iOS device build passes with code signing disabled.
+- Business Setup now has persistent bottom actions so users can always continue or skip without scrolling to the end of the form.
+- Document creation now supports adding a client from inside the estimate/invoice editor.
+- Document filters, computed overdue status, client/document deletion, PDF paid/deposit rows, PDF business-name warning, and post-share review prompt support are implemented.
+- Repeatable simulator smoke testing is available at `scripts/smoke-ios-simulator.sh`.
 
 External launch tasks still required:
 

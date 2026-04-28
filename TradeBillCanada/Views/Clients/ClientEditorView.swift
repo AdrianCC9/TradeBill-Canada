@@ -6,16 +6,19 @@ struct ClientEditorView: View {
     @Environment(\.modelContext) private var modelContext
 
     let client: Client?
+    var onSave: ((Client) -> Void)?
 
     @State private var name = ""
     @State private var companyName = ""
     @State private var phone = ""
     @State private var email = ""
     @State private var addressLine1 = ""
+    @State private var addressLine2 = ""
     @State private var city = ""
     @State private var province = CanadianProvince.ON
     @State private var postalCode = ""
     @State private var notes = ""
+    @State private var saveErrorMessage: String?
 
     var body: some View {
         Form {
@@ -31,6 +34,7 @@ struct ClientEditorView: View {
 
             Section("Address") {
                 TextField("Address", text: $addressLine1)
+                TextField("Address line 2", text: $addressLine2)
                 TextField("City", text: $city)
                 Picker("Province", selection: $province) {
                     ForEach(CanadianProvince.allCases) { province in
@@ -58,6 +62,17 @@ struct ClientEditorView: View {
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
+        .alert(
+            "Couldn’t save client",
+            isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "Please try again.")
+        }
         .onAppear(perform: populate)
     }
 
@@ -68,6 +83,7 @@ struct ClientEditorView: View {
         phone = client.phone
         email = client.email
         addressLine1 = client.addressLine1
+        addressLine2 = client.addressLine2
         city = client.city
         province = CanadianProvince.allCases.first { $0.code == client.provinceCode } ?? .ON
         postalCode = client.postalCode
@@ -81,6 +97,7 @@ struct ClientEditorView: View {
         savedClient.phone = phone
         savedClient.email = email
         savedClient.addressLine1 = addressLine1
+        savedClient.addressLine2 = addressLine2
         savedClient.city = city
         savedClient.provinceCode = province.code
         savedClient.postalCode = postalCode
@@ -90,8 +107,13 @@ struct ClientEditorView: View {
         if client == nil {
             modelContext.insert(savedClient)
         }
-        try? modelContext.save()
-        dismiss()
+
+        do {
+            try modelContext.save()
+            onSave?(savedClient)
+            dismiss()
+        } catch {
+            saveErrorMessage = "That client could not be saved. Please try again."
+        }
     }
 }
-

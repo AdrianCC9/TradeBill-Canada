@@ -117,10 +117,22 @@ final class Document {
     var statusDisplayName: String {
         switch type {
         case .estimate:
-            EstimateStatus(rawValue: statusRawValue)?.displayName ?? statusRawValue.capitalized
+            return EstimateStatus(rawValue: statusRawValue)?.displayName ?? statusRawValue.capitalized
         case .invoice:
-            InvoiceStatus(rawValue: statusRawValue)?.displayName ?? statusRawValue.capitalized
+            if isOverdue {
+                return InvoiceStatus.overdue.displayName
+            }
+            return InvoiceStatus(rawValue: statusRawValue)?.displayName ?? statusRawValue.capitalized
         }
+    }
+
+    var isOverdue: Bool {
+        guard type == .invoice else { return false }
+        guard balanceDueCents > 0 else { return false }
+        guard statusRawValue != InvoiceStatus.paid.rawValue && statusRawValue != InvoiceStatus.cancelled.rawValue else {
+            return false
+        }
+        return dueDate < Calendar.current.startOfDay(for: .now)
     }
 
     var sortedLineItems: [LineItem] {
@@ -128,11 +140,19 @@ final class Document {
     }
 
     func updateClientSnapshot() {
-        clientNameSnapshot = client?.name ?? clientNameSnapshot
-        clientCompanySnapshot = client?.companyName ?? clientCompanySnapshot
-        clientEmailSnapshot = client?.email ?? clientEmailSnapshot
-        clientPhoneSnapshot = client?.phone ?? clientPhoneSnapshot
-        clientAddressSnapshot = client?.singleLineAddress ?? clientAddressSnapshot
+        guard let client else {
+            clientNameSnapshot = ""
+            clientCompanySnapshot = ""
+            clientEmailSnapshot = ""
+            clientPhoneSnapshot = ""
+            clientAddressSnapshot = ""
+            return
+        }
+
+        clientNameSnapshot = client.name
+        clientCompanySnapshot = client.companyName
+        clientEmailSnapshot = client.email
+        clientPhoneSnapshot = client.phone
+        clientAddressSnapshot = client.singleLineAddress
     }
 }
-

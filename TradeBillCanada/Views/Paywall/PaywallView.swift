@@ -9,7 +9,11 @@ struct PaywallView: View {
     @Query private var purchaseStates: [PurchaseState]
 
     private var priceText: String {
-        purchaseManager.lifetimeProduct?.displayPrice ?? "$19.99 CAD"
+        purchaseManager.lifetimeProduct?.displayPrice ?? "Loading price…"
+    }
+
+    private var canPurchase: Bool {
+        purchaseManager.lifetimeProduct != nil
     }
 
     var body: some View {
@@ -39,6 +43,8 @@ struct PaywallView: View {
                             if purchaseManager.hasLifetimeUnlock { dismiss() }
                         }
                     }
+                    .disabled(!canPurchase)
+                    .opacity(canPurchase ? 1 : 0.65)
 
                     SecondaryButton(title: "Restore Purchase", systemImage: "arrow.clockwise") {
                         Task {
@@ -86,4 +92,3 @@ struct PaywallView: View {
         try? modelContext.save()
     }
 }
-

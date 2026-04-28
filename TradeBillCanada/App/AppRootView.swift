@@ -17,6 +17,8 @@ struct AppRootView: View {
                 NavigationStack {
                     BusinessSetupView(onSkip: {
                         skippedBusinessSetup = true
+                    }, onSaved: {
+                        skippedBusinessSetup = true
                     })
                 }
             } else {
@@ -56,4 +58,3 @@ private struct MainTabView: View {
         .tint(AppTheme.deepTurquoise)
     }
 }
-

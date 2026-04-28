@@ -11,6 +11,7 @@ struct PDFRenderRequest {
     var title: String
     var lineItems: [CalculationLineItem]
     var totals: DocumentTotals
+    var amountPaid: Decimal = .zero
     var notes: String
     var terms: String
     var logoURL: URL? = nil
@@ -60,6 +61,7 @@ struct PDFRenderRequest {
             title: document.title,
             lineItems: document.sortedLineItems.map(\.calculationLineItem),
             totals: totals,
+            amountPaid: Decimal.dollars(from: document.amountPaidCents),
             notes: document.notes,
             terms: document.terms,
             logoURL: ImageStorageService.url(for: businessProfile?.logoImagePath ?? ""),
