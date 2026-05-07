@@ -14,9 +14,8 @@ enum ImageStorageService {
         }
 
         let directory = try imageDirectory()
-        let safePrefix = filenamePrefix
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .isEmpty ? "image" : filenamePrefix
+        let cleanPrefix = filenamePrefix.trimmedForStorage
+        let safePrefix = cleanPrefix.isEmpty ? "image" : FilenameSanitizer.sanitize(cleanPrefix)
         let filename = "\(safePrefix)-\(UUID().uuidString).png"
         let url = directory.appendingPathComponent(filename)
         try pngData.write(to: url, options: [.atomic])

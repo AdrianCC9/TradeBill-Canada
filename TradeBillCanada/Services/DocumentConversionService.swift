@@ -8,6 +8,17 @@ enum DocumentConversionService {
     ) -> Document {
         let invoiceNumber = DocumentNumberService.nextNumber(for: .invoice, settings: settings)
         let dueDate = Calendar.current.date(byAdding: .day, value: 14, to: issueDate) ?? issueDate
+        let totalCents = max(estimate.totalCents, 0)
+        let amountPaidCents = min(max(estimate.amountPaidCents, 0), totalCents)
+        let balanceDueCents = max(totalCents - amountPaidCents, 0)
+        let invoiceStatus: InvoiceStatus
+        if balanceDueCents == 0 {
+            invoiceStatus = .paid
+        } else if amountPaidCents > 0 {
+            invoiceStatus = .partiallyPaid
+        } else {
+            invoiceStatus = .unpaid
+        }
 
         let invoice = Document(
             type: .invoice,
@@ -17,7 +28,7 @@ enum DocumentConversionService {
             jobAddress: estimate.jobAddress,
             issueDate: issueDate,
             dueDate: dueDate,
-            statusRawValue: InvoiceStatus.unpaid.rawValue,
+            statusRawValue: invoiceStatus.rawValue,
             subtotalCents: estimate.subtotalCents,
             discountType: estimate.discountType,
             discountValueCents: estimate.discountValueCents,
@@ -26,9 +37,9 @@ enum DocumentConversionService {
             taxLabel: estimate.taxLabel,
             taxRatePercent: estimate.taxRatePercent,
             taxAmountCents: estimate.taxAmountCents,
-            amountPaidCents: 0,
-            totalCents: estimate.totalCents,
-            balanceDueCents: estimate.totalCents,
+            amountPaidCents: amountPaidCents,
+            totalCents: totalCents,
+            balanceDueCents: balanceDueCents,
             notes: estimate.notes,
             terms: estimate.terms,
             convertedFromEstimateId: estimate.id
@@ -58,4 +69,3 @@ enum DocumentConversionService {
         return invoice
     }
 }
-

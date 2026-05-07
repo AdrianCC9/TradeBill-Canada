@@ -40,18 +40,20 @@ enum TaxPresetService {
         let cleanLabel = label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? "Custom Tax"
             : label.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanRatePercent = ratePercent.clampedToNonNegative
         return TaxPreset(
-            id: "custom-\(cleanLabel)-\(ratePercent)",
+            id: "custom-\(cleanLabel)-\(cleanRatePercent)",
             provinceCode: nil,
-            displayName: "\(cleanLabel) \(ratePercent)%",
-            pdfLabel: "\(cleanLabel) \(ratePercent)%",
-            components: [TaxComponent(label: cleanLabel, ratePercent: ratePercent)]
+            displayName: "\(cleanLabel) \(cleanRatePercent)%",
+            pdfLabel: "\(cleanLabel) \(cleanRatePercent)%",
+            components: [TaxComponent(label: cleanLabel, ratePercent: cleanRatePercent)]
         )
     }
 
     static func preset(for document: Document) -> TaxPreset {
+        let cleanProvinceCode = document.taxProvinceCode?.trimmedForStorage.uppercased()
         if
-            let code = document.taxProvinceCode,
+            let code = cleanProvinceCode,
             let province = CanadianProvince.allCases.first(where: { $0.code == code })
         {
             return preset(for: province)
@@ -68,8 +70,9 @@ enum TaxPresetService {
     }
 
     static func preset(matchingProvinceCode code: String?) -> TaxPreset {
+        let cleanCode = code?.trimmedForStorage.uppercased()
         guard
-            let code,
+            let code = cleanCode,
             let province = CanadianProvince.allCases.first(where: { $0.code == code })
         else {
             return noTax
@@ -77,17 +80,18 @@ enum TaxPresetService {
         return preset(for: province)
     }
 
-    private static func customLabel(from taxLabel: String, ratePercent: Double) -> String {
+    private static func customLabel(from taxLabel: String, ratePercent _: Double) -> String {
         let fallback = "Custom Tax"
         let trimmed = taxLabel.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != noTax.pdfLabel else { return fallback }
 
-        let rate = NSDecimalNumber(value: ratePercent).stringValue
-        let suffixes = [" \(rate)%", "\(rate)%", " %"]
-        let label = suffixes.reduce(trimmed) { partial, suffix in
-            partial.hasSuffix(suffix) ? String(partial.dropLast(suffix.count)) : partial
-        }
-        .trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = trimmed
+            .replacingOccurrences(
+                of: #"\s+\d+(?:\.\d+)?\s*%$"#,
+                with: "",
+                options: .regularExpression
+            )
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
         return label.isEmpty ? fallback : label
     }

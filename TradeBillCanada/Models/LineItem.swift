@@ -33,8 +33,8 @@ final class LineItem {
     var calculationLineItem: CalculationLineItem {
         CalculationLineItem(
             description: itemDescription,
-            quantity: Decimal(quantity),
-            unitPrice: unitPrice
+            quantity: Decimal(quantity).clampedToNonNegative,
+            unitPrice: unitPrice.clampedToNonNegative
         )
     }
 
@@ -42,4 +42,3 @@ final class LineItem {
         calculationLineItem.lineTotal.cents
     }
 }
-

@@ -5,8 +5,16 @@ struct CalculationLineItem: Hashable {
     var quantity: Decimal
     var unitPrice: Decimal
 
+    var normalizedQuantity: Decimal {
+        quantity.clampedToNonNegative
+    }
+
+    var normalizedUnitPrice: Decimal {
+        unitPrice.clampedToNonNegative
+    }
+
     var lineTotal: Decimal {
-        (quantity * unitPrice).roundedCurrency()
+        (normalizedQuantity * normalizedUnitPrice).roundedCurrency()
     }
 }
 
@@ -38,19 +46,20 @@ enum CalculationService {
         let discountAmount = calculateDiscount(
             subtotal: subtotal,
             type: input.discountType,
-            value: input.discountValue
+            value: input.discountValue.clampedToNonNegative
         )
 
         let taxableAmount = max(subtotal - discountAmount, .zero).roundedCurrency()
 
         let taxLines = input.taxPreset.components.map { component in
-            let amount = (taxableAmount * component.ratePercent / Decimal(100)).roundedCurrency()
-            return TaxBreakdownLine(label: component.label, ratePercent: component.ratePercent, amount: amount)
+            let ratePercent = component.ratePercent.clampedToNonNegative
+            let amount = (taxableAmount * ratePercent / Decimal(100)).roundedCurrency()
+            return TaxBreakdownLine(label: component.label, ratePercent: ratePercent, amount: amount)
         }
 
         let taxAmount = taxLines.map(\.amount).reduce(Decimal.zero, +).roundedCurrency()
         let total = max(taxableAmount + taxAmount, .zero).roundedCurrency()
-        let balanceDue = max(total - input.amountPaid, .zero).roundedCurrency()
+        let balanceDue = max(total - input.amountPaid.clampedToNonNegative, .zero).roundedCurrency()
 
         return DocumentTotals(
             subtotal: subtotal,
@@ -79,4 +88,3 @@ enum CalculationService {
         return min(max(rawDiscount, .zero), subtotal).roundedCurrency()
     }
 }
-

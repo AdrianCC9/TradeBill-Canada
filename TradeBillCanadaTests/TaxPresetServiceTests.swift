@@ -16,6 +16,32 @@ final class TaxPresetServiceTests: XCTestCase {
         XCTAssertEqual(preset.components.map(\.ratePercent), [Decimal(5), Decimal(7)])
     }
 
+    func testAllProvincePresetsHaveExpectedCombinedRates() {
+        let expectedRates: [CanadianProvince: Decimal] = [
+            .AB: 5,
+            .BC: 12,
+            .MB: 12,
+            .NB: 15,
+            .NL: 15,
+            .NT: 5,
+            .NS: 14,
+            .NU: 5,
+            .ON: 13,
+            .PE: 15,
+            .QC: Decimal(string: "14.975")!,
+            .SK: 11,
+            .YT: 5
+        ]
+
+        CanadianProvince.allCases.forEach { province in
+            XCTAssertEqual(
+                TaxPresetService.preset(for: province).combinedRatePercent,
+                expectedRates[province]!,
+                province.code
+            )
+        }
+    }
+
     func testDocumentCustomTaxPresetUsesSavedLabelAndRate() {
         let document = Document(
             type: .invoice,
@@ -42,5 +68,36 @@ final class TaxPresetServiceTests: XCTestCase {
         )
 
         XCTAssertEqual(TaxPresetService.preset(for: document), TaxPresetService.noTax)
+    }
+
+    func testDocumentProvinceCodeMatchingIgnoresWhitespaceAndCase() {
+        let document = Document(
+            type: .invoice,
+            documentNumber: "INV-0002",
+            taxProvinceCode: " qc ",
+            taxLabel: "Ignored 1%",
+            taxRatePercent: 1
+        )
+
+        XCTAssertEqual(TaxPresetService.preset(for: document).pdfLabel, "GST 5% + QST 9.975%")
+    }
+
+    func testCustomTaxLabelStripsEquivalentTrailingPercentageFormats() {
+        let document = Document(
+            type: .invoice,
+            documentNumber: "INV-0003",
+            taxProvinceCode: nil,
+            taxLabel: "Local Levy 7.250%",
+            taxRatePercent: 7.25
+        )
+
+        let preset = TaxPresetService.preset(for: document)
+
+        XCTAssertEqual(preset.components.map(\.label), ["Local Levy"])
+        XCTAssertEqual(preset.pdfLabel, "Local Levy 7.25%")
+    }
+
+    func testMatchingProvinceCodeIgnoresWhitespaceAndCase() {
+        XCTAssertEqual(TaxPresetService.preset(matchingProvinceCode: " on ").pdfLabel, "HST 13%")
     }
 }

@@ -79,5 +79,85 @@ final class CalculationServiceTests: XCTestCase {
         XCTAssertEqual(totals.total, Decimal.zero)
         XCTAssertEqual(totals.balanceDue, Decimal.zero)
     }
-}
 
+    func testPercentageDiscountGreaterThanOneHundredPercentClampsToSubtotal() {
+        let totals = CalculationService.calculate(
+            CalculationInput(
+                lineItems: [CalculationLineItem(description: "Service", quantity: 1, unitPrice: 100)],
+                discountType: .percentage,
+                discountValue: 150,
+                taxPreset: TaxPresetService.preset(for: .ON),
+                amountPaid: 0
+            )
+        )
+
+        XCTAssertEqual(totals.discountAmount, Decimal(string: "100.00")!)
+        XCTAssertEqual(totals.total, Decimal.zero)
+        XCTAssertEqual(totals.balanceDue, Decimal.zero)
+    }
+
+    func testOverpaymentNeverCreatesNegativeBalanceDue() {
+        let totals = CalculationService.calculate(
+            CalculationInput(
+                lineItems: [CalculationLineItem(description: "Service", quantity: 1, unitPrice: 100)],
+                discountType: .none,
+                discountValue: 0,
+                taxPreset: TaxPresetService.noTax,
+                amountPaid: 250
+            )
+        )
+
+        XCTAssertEqual(totals.total, Decimal(string: "100.00")!)
+        XCTAssertEqual(totals.balanceDue, Decimal.zero)
+    }
+
+    func testZeroLineItemsProduceZeroTotals() {
+        let totals = CalculationService.calculate(
+            CalculationInput(
+                lineItems: [],
+                discountType: .percentage,
+                discountValue: 50,
+                taxPreset: TaxPresetService.preset(for: .ON),
+                amountPaid: 10
+            )
+        )
+
+        XCTAssertEqual(totals.subtotal, Decimal.zero)
+        XCTAssertEqual(totals.discountAmount, Decimal.zero)
+        XCTAssertEqual(totals.taxAmount, Decimal.zero)
+        XCTAssertEqual(totals.total, Decimal.zero)
+        XCTAssertEqual(totals.balanceDue, Decimal.zero)
+    }
+
+    func testFractionalQuantitiesRoundLineTotalsToCurrency() {
+        let item = CalculationLineItem(
+            description: "Small part",
+            quantity: Decimal(string: "3")!,
+            unitPrice: Decimal(string: "0.335")!
+        )
+
+        XCTAssertEqual(item.lineTotal, Decimal(string: "1.01")!)
+    }
+
+    func testNegativeMoneyInputsAreClampedToZero() {
+        let totals = CalculationService.calculate(
+            CalculationInput(
+                lineItems: [
+                    CalculationLineItem(description: "Bad quantity", quantity: -2, unitPrice: 100),
+                    CalculationLineItem(description: "Bad rate", quantity: 1, unitPrice: -100),
+                    CalculationLineItem(description: "Service", quantity: 1, unitPrice: 100)
+                ],
+                discountType: .fixed,
+                discountValue: -50,
+                taxPreset: TaxPresetService.custom(label: "Bad Tax", ratePercent: -13),
+                amountPaid: -25
+            )
+        )
+
+        XCTAssertEqual(totals.subtotal, Decimal(string: "100.00")!)
+        XCTAssertEqual(totals.discountAmount, Decimal.zero)
+        XCTAssertEqual(totals.taxAmount, Decimal.zero)
+        XCTAssertEqual(totals.total, Decimal(string: "100.00")!)
+        XCTAssertEqual(totals.balanceDue, Decimal(string: "100.00")!)
+    }
+}

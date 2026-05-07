@@ -223,9 +223,14 @@ struct HomeDashboardView: View {
 
     private func syncPurchaseStateIfNeeded() {
         guard purchaseManager.hasLifetimeUnlock else { return }
-        settings.first?.hasLifetimeUnlock = true
-        purchaseStates.first?.hasLifetimeUnlock = true
-        purchaseStates.first?.lastVerifiedAt = .now
+        let appSettings = settings.first ?? AppSettings()
+        if settings.isEmpty { modelContext.insert(appSettings) }
+        appSettings.hasLifetimeUnlock = true
+
+        let purchaseState = purchaseStates.first ?? PurchaseState()
+        if purchaseStates.isEmpty { modelContext.insert(purchaseState) }
+        purchaseState.hasLifetimeUnlock = true
+        purchaseState.lastVerifiedAt = .now
         try? modelContext.save()
     }
 

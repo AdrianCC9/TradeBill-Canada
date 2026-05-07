@@ -9,9 +9,9 @@ private struct LineItemDraft: Identifiable {
 
     var calculationLineItem: CalculationLineItem {
         CalculationLineItem(
-            description: description,
-            quantity: quantity.decimalValue,
-            unitPrice: unitPrice.decimalValue
+            description: description.trimmedForStorage,
+            quantity: quantity.nonNegativeDecimalValue,
+            unitPrice: unitPrice.nonNegativeDecimalValue
         )
     }
 }
@@ -61,7 +61,7 @@ struct DocumentEditorView: View {
 
     private var selectedTaxPreset: TaxPreset {
         if taxPresetID == Self.customTaxOptionID {
-            return TaxPresetService.custom(label: customTaxLabel, ratePercent: customTaxRate.decimalValue)
+            return TaxPresetService.custom(label: customTaxLabel, ratePercent: customTaxRate.nonNegativeDecimalValue)
         }
         return taxOptions.first { $0.id == taxPresetID } ?? TaxPresetService.noTax
     }
@@ -71,9 +71,9 @@ struct DocumentEditorView: View {
             CalculationInput(
                 lineItems: lineItems.map(\.calculationLineItem),
                 discountType: discountType,
-                discountValue: discountValue.decimalValue,
+                discountValue: discountValue.nonNegativeDecimalValue,
                 taxPreset: selectedTaxPreset,
-                amountPaid: amountPaid.decimalValue
+                amountPaid: amountPaid.nonNegativeDecimalValue
             )
         )
     }
@@ -119,11 +119,18 @@ struct DocumentEditorView: View {
                 .onDelete { offsets in
                     lineItems.remove(atOffsets: offsets)
                 }
+                .onMove { offsets, newOffset in
+                    lineItems.move(fromOffsets: offsets, toOffset: newOffset)
+                }
 
                 Button {
                     lineItems.append(LineItemDraft(description: "", quantity: "1", unitPrice: ""))
                 } label: {
                     Label("Add line item", systemImage: "plus.circle")
+                }
+
+                if lineItems.count > 1 {
+                    EditButton()
                 }
             }
 
@@ -279,26 +286,27 @@ struct DocumentEditorView: View {
             type: documentType,
             documentNumber: DocumentNumberService.nextNumber(for: documentType, settings: appSettings)
         )
+        let storedAmountPaid = min(amountPaid.nonNegativeDecimalValue, totals.total)
 
         document.client = selectedClient
         document.updateClientSnapshot()
-        document.title = title
-        document.jobAddress = jobAddress
+        document.title = title.trimmedForStorage
+        document.jobAddress = jobAddress.trimmedForStorage
         document.issueDate = issueDate
         document.dueDate = dueDate
         document.subtotalCents = totals.subtotal.cents
         document.discountType = discountType
-        document.discountValueCents = discountType == .fixed ? discountValue.decimalValue.cents : 0
-        document.discountPercentage = discountType == .percentage ? NSDecimalNumber(decimal: discountValue.decimalValue).doubleValue : 0
+        document.discountValueCents = discountType == .fixed ? discountValue.nonNegativeDecimalValue.cents : 0
+        document.discountPercentage = discountType == .percentage ? NSDecimalNumber(decimal: discountValue.nonNegativeDecimalValue).doubleValue : 0
         document.taxProvinceCode = selectedTaxPreset.provinceCode
         document.taxLabel = selectedTaxPreset.pdfLabel
         document.taxRatePercent = NSDecimalNumber(decimal: selectedTaxPreset.combinedRatePercent).doubleValue
         document.taxAmountCents = totals.taxAmount.cents
-        document.amountPaidCents = amountPaid.decimalValue.cents
+        document.amountPaidCents = storedAmountPaid.cents
         document.totalCents = totals.total.cents
         document.balanceDueCents = totals.balanceDue.cents
-        document.notes = notes
-        document.terms = terms
+        document.notes = notes.trimmedForStorage
+        document.terms = terms.trimmedForStorage
         document.statusRawValue = statusAfterSave(for: documentType, existingStatus: existingDocument?.statusRawValue, totals: totals)
         document.updatedAt = .now
 
@@ -306,8 +314,8 @@ struct DocumentEditorView: View {
         document.lineItems = cleanLineItems.enumerated().map { index, item in
             LineItem(
                 itemDescription: item.description.trimmingCharacters(in: .whitespacesAndNewlines),
-                quantity: NSDecimalNumber(decimal: item.quantity.decimalValue).doubleValue,
-                unitPriceCents: item.unitPrice.decimalValue.cents,
+                quantity: NSDecimalNumber(decimal: item.quantity.nonNegativeDecimalValue).doubleValue,
+                unitPriceCents: item.unitPrice.nonNegativeDecimalValue.cents,
                 sortOrder: index,
                 document: document
             )
@@ -334,7 +342,7 @@ struct DocumentEditorView: View {
             return existingStatus ?? EstimateStatus.draft.rawValue
         case .invoice:
             if totals.balanceDue <= .zero { return InvoiceStatus.paid.rawValue }
-            if amountPaid.decimalValue > .zero { return InvoiceStatus.partiallyPaid.rawValue }
+            if amountPaid.nonNegativeDecimalValue > .zero { return InvoiceStatus.partiallyPaid.rawValue }
             return InvoiceStatus.unpaid.rawValue
         }
     }

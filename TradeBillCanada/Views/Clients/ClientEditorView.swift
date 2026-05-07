@@ -92,16 +92,16 @@ struct ClientEditorView: View {
 
     private func save() {
         let savedClient = client ?? Client()
-        savedClient.name = name
-        savedClient.companyName = companyName
-        savedClient.phone = phone
-        savedClient.email = email
-        savedClient.addressLine1 = addressLine1
-        savedClient.addressLine2 = addressLine2
-        savedClient.city = city
+        savedClient.name = name.trimmedForStorage
+        savedClient.companyName = companyName.trimmedForStorage
+        savedClient.phone = phone.trimmedForStorage
+        savedClient.email = email.trimmedForStorage
+        savedClient.addressLine1 = addressLine1.trimmedForStorage
+        savedClient.addressLine2 = addressLine2.trimmedForStorage
+        savedClient.city = city.trimmedForStorage
         savedClient.provinceCode = province.code
-        savedClient.postalCode = postalCode
-        savedClient.notes = notes
+        savedClient.postalCode = postalCode.trimmedForStorage
+        savedClient.notes = notes.trimmedForStorage
         savedClient.updatedAt = .now
 
         if client == nil {

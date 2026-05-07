@@ -70,7 +70,7 @@ TradeBillCanada/
 ## Local Build
 
 ```sh
-xcodebuild -project TradeBillCanada.xcodeproj -scheme TradeBillCanada -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcodebuild -project TradeBillCanada.xcodeproj -scheme TradeBillCanada -destination 'generic/platform=iOS Simulator' build
 ```
 
 If Xcode reports that the iOS platform is missing, install it first:
@@ -87,10 +87,16 @@ Run the app test suite on a booted or available simulator:
 scripts/run-ios-tests.sh
 ```
 
-For a deterministic simulator target, pass the simulator UUID:
+The script prefers a booted iPhone simulator, then the first available iPhone simulator. For a deterministic target, pass the simulator UUID:
 
 ```sh
 DEVICE_ID=73466A72-167A-446E-B4B3-7D840709D7B1 scripts/run-ios-tests.sh
+```
+
+You can also target a simulator by exact name:
+
+```sh
+DEVICE_NAME='iPhone 17' scripts/run-ios-tests.sh
 ```
 
 If Simulator/Xcode gets stuck during first boot or test launch, capture a diagnostic snapshot:

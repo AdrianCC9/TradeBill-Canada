@@ -53,4 +53,32 @@ final class DocumentSnapshotTests: XCTestCase {
         XCTAssertFalse(document.isOverdue)
         XCTAssertEqual(document.statusDisplayName, "Paid")
     }
+
+    func testCancelledPastDueInvoiceDoesNotDisplayOverdue() {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Calendar.current.startOfDay(for: .now))!
+        let document = Document(
+            type: .invoice,
+            documentNumber: "INV-0004",
+            dueDate: yesterday,
+            statusRawValue: InvoiceStatus.cancelled.rawValue,
+            balanceDueCents: 10_000
+        )
+
+        XCTAssertFalse(document.isOverdue)
+        XCTAssertEqual(document.statusDisplayName, "Cancelled")
+    }
+
+    func testEstimateNeverDisplaysOverdueEvenWhenPastDueWithBalance() {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Calendar.current.startOfDay(for: .now))!
+        let document = Document(
+            type: .estimate,
+            documentNumber: "EST-0001",
+            dueDate: yesterday,
+            statusRawValue: EstimateStatus.sent.rawValue,
+            balanceDueCents: 10_000
+        )
+
+        XCTAssertFalse(document.isOverdue)
+        XCTAssertEqual(document.statusDisplayName, "Sent")
+    }
 }

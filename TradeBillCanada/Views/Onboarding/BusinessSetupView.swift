@@ -237,20 +237,20 @@ struct BusinessSetupView: View {
 
     private func save() {
         let profile = existingProfile ?? BusinessProfile()
-        profile.businessName = businessName
-        profile.ownerName = ownerName
-        profile.phone = phone
-        profile.email = email
-        profile.addressLine1 = addressLine1
-        profile.addressLine2 = addressLine2
-        profile.city = city
+        profile.businessName = businessName.trimmedForStorage
+        profile.ownerName = ownerName.trimmedForStorage
+        profile.phone = phone.trimmedForStorage
+        profile.email = email.trimmedForStorage
+        profile.addressLine1 = addressLine1.trimmedForStorage
+        profile.addressLine2 = addressLine2.trimmedForStorage
+        profile.city = city.trimmedForStorage
         profile.provinceCode = province.code
-        profile.postalCode = postalCode
-        profile.taxNumber = taxNumber
+        profile.postalCode = postalCode.trimmedForStorage
+        profile.taxNumber = taxNumber.trimmedForStorage
         profile.logoImagePath = logoImagePath
         profile.signatureImagePath = signatureImagePath
         profile.defaultTaxProvinceCode = defaultTaxProvince.code
-        profile.defaultPaymentTerms = defaultTerms
+        profile.defaultPaymentTerms = defaultTerms.trimmedForStorage
         profile.updatedAt = .now
 
         if existingProfile == nil {

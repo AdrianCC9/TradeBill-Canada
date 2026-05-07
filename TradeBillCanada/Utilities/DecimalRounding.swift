@@ -1,6 +1,10 @@
 import Foundation
 
 extension Decimal {
+    var clampedToNonNegative: Decimal {
+        self < .zero ? .zero : self
+    }
+
     func rounded(scale: Int = 2, mode: NSDecimalNumber.RoundingMode = .plain) -> Decimal {
         var value = self
         var result = Decimal()
@@ -24,7 +28,17 @@ extension Decimal {
 
 extension String {
     var decimalValue: Decimal {
-        Decimal(string: replacingOccurrences(of: ",", with: "")) ?? .zero
+        let cleanValue = trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: "")
+            .replacingOccurrences(of: "$", with: "")
+        return Decimal(string: cleanValue) ?? .zero
+    }
+
+    var nonNegativeDecimalValue: Decimal {
+        decimalValue.clampedToNonNegative
+    }
+
+    var trimmedForStorage: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
-

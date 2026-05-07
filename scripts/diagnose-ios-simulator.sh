@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEVICE_NAME="${DEVICE_NAME:-iPhone 16}"
+DEVICE_NAME="${DEVICE_NAME:-}"
+DEVICE_ID="${DEVICE_ID:-}"
 BOOTSTATUS_TIMEOUT_SECONDS="${BOOTSTATUS_TIMEOUT_SECONDS:-45}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/ios-simulator-selection.sh"
 
 run_with_timeout() {
   local seconds="$1"
@@ -31,11 +35,6 @@ run_with_timeout() {
   return "$status"
 }
 
-device_id_for_name() {
-  xcrun simctl list devices available |
-    awk -v name="$DEVICE_NAME" '$0 ~ name" \\(" { match($0, /\([A-F0-9-]+\)/); if (RSTART) { print substr($0, RSTART + 1, RLENGTH - 2); exit } }'
-}
-
 echo "== Xcode =="
 xcode-select -p
 xcodebuild -version
@@ -58,13 +57,8 @@ ps -axo pid,ppid,etime,pcpu,pmem,state,command |
   rg 'xcodebuild|simctl|CoreSimulator|Simulator|update_dyld|datamigrator|TradeBillCanada' |
   rg -v 'rg|diagnose-ios-simulator' || true
 
-DEVICE_ID="$(device_id_for_name)"
-if [[ -z "$DEVICE_ID" ]]; then
-  echo
-  echo "No available simulator found for DEVICE_NAME=$DEVICE_NAME" >&2
-  exit 1
-fi
+RESOLVED_DEVICE_ID="$(ios_resolve_simulator_id "$DEVICE_ID" "$DEVICE_NAME")"
 
 echo
-echo "== Boot status for $DEVICE_NAME ($DEVICE_ID) =="
-run_with_timeout "$BOOTSTATUS_TIMEOUT_SECONDS" xcrun simctl bootstatus "$DEVICE_ID"
+echo "== Boot status for simulator $RESOLVED_DEVICE_ID =="
+run_with_timeout "$BOOTSTATUS_TIMEOUT_SECONDS" xcrun simctl bootstatus "$RESOLVED_DEVICE_ID"

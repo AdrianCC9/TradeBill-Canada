@@ -48,16 +48,20 @@ final class Client {
     }
 
     var displayName: String {
-        if !companyName.isEmpty, !name.isEmpty {
-            return "\(name) - \(companyName)"
+        let cleanName = name.trimmedForStorage
+        let cleanCompanyName = companyName.trimmedForStorage
+        if !cleanCompanyName.isEmpty, !cleanName.isEmpty {
+            return "\(cleanName) - \(cleanCompanyName)"
         }
-        return name.isEmpty ? "Unnamed Client" : name
+        if !cleanName.isEmpty { return cleanName }
+        if !cleanCompanyName.isEmpty { return cleanCompanyName }
+        return "Unnamed Client"
     }
 
     var singleLineAddress: String {
         [addressLine1, addressLine2, city, provinceCode, postalCode]
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .map(\.trimmedForStorage)
+            .filter { !$0.isEmpty }
             .joined(separator: ", ")
     }
 }
-

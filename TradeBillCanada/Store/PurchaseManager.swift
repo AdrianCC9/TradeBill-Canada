@@ -8,6 +8,20 @@ final class PurchaseManager: ObservableObject {
     @Published private(set) var hasLifetimeUnlock = false
     @Published var lastErrorMessage: String?
 
+    private var transactionUpdatesTask: Task<Void, Never>?
+
+    init() {
+        transactionUpdatesTask = Task { [weak self] in
+            for await result in Transaction.updates {
+                await self?.handle(transactionResult: result)
+            }
+        }
+    }
+
+    deinit {
+        transactionUpdatesTask?.cancel()
+    }
+
     var lifetimeProduct: Product? {
         products.first { $0.id == ProductIDs.lifetimeUnlock }
     }
@@ -15,6 +29,7 @@ final class PurchaseManager: ObservableObject {
     func loadProducts() async {
         do {
             products = try await Product.products(for: [ProductIDs.lifetimeUnlock])
+            lastErrorMessage = products.isEmpty ? StoreError.productUnavailable.localizedDescription : nil
         } catch {
             lastErrorMessage = error.localizedDescription
         }
@@ -30,6 +45,7 @@ final class PurchaseManager: ObservableObject {
             switch result {
             case .success(let verification):
                 try await apply(verification)
+                lastErrorMessage = nil
             case .userCancelled, .pending:
                 break
             @unknown default:
@@ -44,6 +60,7 @@ final class PurchaseManager: ObservableObject {
         do {
             try await AppStore.sync()
             await refreshEntitlements()
+            lastErrorMessage = nil
         } catch {
             lastErrorMessage = error.localizedDescription
         }
@@ -62,6 +79,15 @@ final class PurchaseManager: ObservableObject {
             }
         }
         hasLifetimeUnlock = unlocked
+    }
+
+    private func handle(transactionResult result: VerificationResult<Transaction>) async {
+        do {
+            try await apply(result)
+            lastErrorMessage = nil
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
     }
 
     private func apply(_ result: VerificationResult<Transaction>) async throws {

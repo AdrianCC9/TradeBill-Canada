@@ -109,7 +109,13 @@ final class Document {
     }
 
     var displayClientName: String {
-        if !clientNameSnapshot.isEmpty { return clientNameSnapshot }
+        let cleanName = clientNameSnapshot.trimmedForStorage
+        let cleanCompanyName = clientCompanySnapshot.trimmedForStorage
+        if !cleanName.isEmpty, !cleanCompanyName.isEmpty {
+            return "\(cleanName) - \(cleanCompanyName)"
+        }
+        if !cleanName.isEmpty { return cleanName }
+        if !cleanCompanyName.isEmpty { return cleanCompanyName }
         if let client { return client.displayName }
         return "No client"
     }
@@ -149,10 +155,10 @@ final class Document {
             return
         }
 
-        clientNameSnapshot = client.name
-        clientCompanySnapshot = client.companyName
-        clientEmailSnapshot = client.email
-        clientPhoneSnapshot = client.phone
+        clientNameSnapshot = client.name.trimmedForStorage
+        clientCompanySnapshot = client.companyName.trimmedForStorage
+        clientEmailSnapshot = client.email.trimmedForStorage
+        clientPhoneSnapshot = client.phone.trimmedForStorage
         clientAddressSnapshot = client.singleLineAddress
     }
 }

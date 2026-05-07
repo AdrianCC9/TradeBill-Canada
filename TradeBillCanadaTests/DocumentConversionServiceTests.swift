@@ -52,4 +52,44 @@ final class DocumentConversionServiceTests: XCTestCase {
         XCTAssertEqual(settings.nextInvoiceNumber, 8)
         XCTAssertEqual(settings.freeDocumentsCreated, 3)
     }
+
+    func testEstimateConversionPreservesDepositAsInvoicePayment() {
+        let issueDate = Date(timeIntervalSinceReferenceDate: 2_000_000)
+        let estimate = Document(
+            type: .estimate,
+            documentNumber: "EST-0005",
+            issueDate: issueDate,
+            amountPaidCents: 12_500,
+            totalCents: 50_000,
+            balanceDueCents: 37_500
+        )
+        let settings = AppSettings(nextInvoiceNumber: 9, freeDocumentsCreated: 1)
+
+        let invoice = DocumentConversionService.makeInvoice(
+            from: estimate,
+            settings: settings,
+            issueDate: issueDate
+        )
+
+        XCTAssertEqual(invoice.amountPaidCents, 12_500)
+        XCTAssertEqual(invoice.balanceDueCents, 37_500)
+        XCTAssertEqual(invoice.statusRawValue, InvoiceStatus.partiallyPaid.rawValue)
+    }
+
+    func testEstimateConversionCapsOverpaidDepositAtInvoiceTotal() {
+        let estimate = Document(
+            type: .estimate,
+            documentNumber: "EST-0006",
+            amountPaidCents: 25_000,
+            totalCents: 10_000,
+            balanceDueCents: 0
+        )
+        let settings = AppSettings(nextInvoiceNumber: 10)
+
+        let invoice = DocumentConversionService.makeInvoice(from: estimate, settings: settings)
+
+        XCTAssertEqual(invoice.amountPaidCents, 10_000)
+        XCTAssertEqual(invoice.balanceDueCents, 0)
+        XCTAssertEqual(invoice.statusRawValue, InvoiceStatus.paid.rawValue)
+    }
 }

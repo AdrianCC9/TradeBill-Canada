@@ -8,6 +8,10 @@ final class EntitlementGateTests: XCTestCase {
         XCTAssertTrue(EntitlementGate.canCreateDocument(settings: settings, purchaseState: nil))
     }
 
+    func testMissingSettingsStartsInsideFreeLimit() {
+        XCTAssertTrue(EntitlementGate.canCreateDocument(settings: nil, purchaseState: nil))
+    }
+
     func testFreeUserIsBlockedAfterThreeDocuments() {
         let settings = AppSettings(freeDocumentsCreated: 3, hasLifetimeUnlock: false)
 
@@ -19,5 +23,26 @@ final class EntitlementGateTests: XCTestCase {
 
         XCTAssertTrue(EntitlementGate.canCreateDocument(settings: settings, purchaseState: nil))
     }
-}
 
+    func testPersistedPurchaseStateAllowsCreationAfterFreeLimit() {
+        let settings = AppSettings(freeDocumentsCreated: 3, hasLifetimeUnlock: false)
+        let purchaseState = PurchaseState(hasLifetimeUnlock: true)
+
+        XCTAssertTrue(EntitlementGate.canCreateDocument(settings: settings, purchaseState: purchaseState))
+    }
+
+    func testPDFExportIsBlockedAfterFreeLimitWithoutUnlock() {
+        let settings = AppSettings(freeDocumentsCreated: 3, hasLifetimeUnlock: false)
+
+        XCTAssertFalse(EntitlementGate.canExportPDF(settings: settings, purchaseState: nil))
+    }
+
+    func testPurchaseStateUnlockWorksEvenWhenSettingsAreMissing() {
+        XCTAssertTrue(
+            EntitlementGate.canCreateDocument(
+                settings: nil,
+                purchaseState: PurchaseState(hasLifetimeUnlock: true)
+            )
+        )
+    }
+}

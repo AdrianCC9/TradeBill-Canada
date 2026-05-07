@@ -22,6 +22,7 @@ struct PDFRenderRequest {
         businessProfile: BusinessProfile?
     ) -> PDFRenderRequest {
         let preset = TaxPresetService.preset(for: document)
+        let rawAmountPaid = Decimal.dollars(from: document.amountPaidCents).clampedToNonNegative
         let totals = CalculationService.calculate(
             CalculationInput(
                 lineItems: document.sortedLineItems.map(\.calculationLineItem),
@@ -30,40 +31,43 @@ struct PDFRenderRequest {
                     ? Decimal(document.discountPercentage)
                     : Decimal.dollars(from: document.discountValueCents),
                 taxPreset: preset,
-                amountPaid: Decimal.dollars(from: document.amountPaidCents)
+                amountPaid: rawAmountPaid
             )
         )
+        let displayedAmountPaid = min(rawAmountPaid, totals.total)
+        let cleanTaxNumber = businessProfile?.taxNumber.trimmedForStorage ?? ""
 
         let businessLines = [
-            businessProfile?.ownerName ?? "",
-            businessProfile?.singleLineAddress ?? "",
-            businessProfile?.phone ?? "",
-            businessProfile?.email ?? "",
-            businessProfile?.taxNumber.isEmpty == false ? "Tax #: \(businessProfile?.taxNumber ?? "")" : ""
+            businessProfile?.ownerName.trimmedForStorage ?? "",
+            businessProfile?.singleLineAddress.trimmedForStorage ?? "",
+            businessProfile?.phone.trimmedForStorage ?? "",
+            businessProfile?.email.trimmedForStorage ?? "",
+            cleanTaxNumber.isEmpty ? "" : "Tax #: \(cleanTaxNumber)"
         ].filter { !$0.isEmpty }
 
         let clientLines = [
-            document.clientNameSnapshot,
-            document.clientCompanySnapshot,
-            document.clientAddressSnapshot,
-            document.clientEmailSnapshot,
-            document.clientPhoneSnapshot
+            document.clientNameSnapshot.trimmedForStorage,
+            document.clientCompanySnapshot.trimmedForStorage,
+            document.clientAddressSnapshot.trimmedForStorage,
+            document.clientEmailSnapshot.trimmedForStorage,
+            document.clientPhoneSnapshot.trimmedForStorage
         ].filter { !$0.isEmpty }
+        let cleanBusinessName = businessProfile?.businessName.trimmedForStorage ?? ""
 
         return PDFRenderRequest(
-            businessName: businessProfile?.businessName.isEmpty == false ? businessProfile?.businessName ?? "TradeBill Canada" : "TradeBill Canada",
+            businessName: cleanBusinessName.isEmpty ? "TradeBill Canada" : cleanBusinessName,
             businessContactLines: businessLines,
             documentType: document.type,
             documentNumber: document.documentNumber,
             issueDate: document.issueDate,
             dueDate: document.dueDate,
             clientLines: clientLines,
-            title: document.title,
+            title: document.title.trimmedForStorage,
             lineItems: document.sortedLineItems.map(\.calculationLineItem),
             totals: totals,
-            amountPaid: Decimal.dollars(from: document.amountPaidCents),
-            notes: document.notes,
-            terms: document.terms,
+            amountPaid: displayedAmountPaid,
+            notes: document.notes.trimmedForStorage,
+            terms: document.terms.trimmedForStorage,
             logoURL: ImageStorageService.url(for: businessProfile?.logoImagePath ?? ""),
             signatureURL: ImageStorageService.url(for: businessProfile?.signatureImagePath ?? "")
         )

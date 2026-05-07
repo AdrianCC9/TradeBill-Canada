@@ -156,8 +156,8 @@ enum PDFRenderService {
         var y = startY
         lineItems.forEach { item in
             draw(item.description, at: CGPoint(x: PDFLayout.margin + 8, y: y + 6), font: .systemFont(ofSize: 10), width: 252)
-            draw("\(NSDecimalNumber(decimal: item.quantity))", at: CGPoint(x: 330, y: y + 6), font: .systemFont(ofSize: 10), alignment: .right, width: 48)
-            draw(CurrencyFormatter.string(from: item.unitPrice), at: CGPoint(x: 390, y: y + 6), font: .systemFont(ofSize: 10), alignment: .right, width: 70)
+            draw("\(NSDecimalNumber(decimal: item.normalizedQuantity))", at: CGPoint(x: 330, y: y + 6), font: .systemFont(ofSize: 10), alignment: .right, width: 48)
+            draw(CurrencyFormatter.string(from: item.normalizedUnitPrice), at: CGPoint(x: 390, y: y + 6), font: .systemFont(ofSize: 10), alignment: .right, width: 70)
             draw(CurrencyFormatter.string(from: item.lineTotal), at: CGPoint(x: 486, y: y + 6), font: .systemFont(ofSize: 10), alignment: .right, width: 84)
             strokeLine(y: y + PDFLayout.rowHeight)
             y += PDFLayout.rowHeight

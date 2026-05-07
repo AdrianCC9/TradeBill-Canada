@@ -60,17 +60,19 @@ final class BusinessProfile {
     }
 
     var province: CanadianProvince {
-        CanadianProvince.allCases.first { $0.code == provinceCode } ?? .ON
+        let cleanCode = provinceCode.trimmedForStorage.uppercased()
+        return CanadianProvince.allCases.first { $0.code == cleanCode } ?? .ON
     }
 
     var defaultTaxProvince: CanadianProvince {
-        CanadianProvince.allCases.first { $0.code == defaultTaxProvinceCode } ?? .ON
+        let cleanCode = defaultTaxProvinceCode.trimmedForStorage.uppercased()
+        return CanadianProvince.allCases.first { $0.code == cleanCode } ?? .ON
     }
 
     var singleLineAddress: String {
         [addressLine1, addressLine2, city, provinceCode, postalCode]
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .map(\.trimmedForStorage)
+            .filter { !$0.isEmpty }
             .joined(separator: ", ")
     }
 }
-

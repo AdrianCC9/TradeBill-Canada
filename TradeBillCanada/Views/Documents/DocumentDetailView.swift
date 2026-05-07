@@ -185,7 +185,7 @@ struct DocumentDetailView: View {
                 amountRow("Discount", -computedTotals.discountAmount.cents)
             }
             amountRow(document.taxLabel, document.taxAmountCents)
-            amountRow("Paid", -document.amountPaidCents)
+            amountRow("Paid", -min(max(document.amountPaidCents, 0), max(document.totalCents, 0)))
             Divider()
             amountRow("Total", document.totalCents, isBold: true)
             amountRow("Balance Due", document.balanceDueCents, isBold: true)
